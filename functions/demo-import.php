@@ -1,15 +1,25 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-add_filter( 'upload_mimes', function ( $mimes ) {
-	if ( current_user_can( 'manage_options' ) ) {
-		$mimes['svg'] = 'image/svg+xml';
-	}
-	return $mimes;
-} );
+/**
+ * Text-only content importer for Kompas Indoor.
+ *
+ * Important:
+ * - does not upload files;
+ * - does not write image/gallery/logo fields;
+ * - preserves media already selected in ACF when text groups are updated;
+ * - may be run repeatedly;
+ * - creates/updates the three service posts and the SEO landing pages.
+ */
 
 add_action( 'admin_menu', function () {
-	add_theme_page( 'Импорт контента Kompas Indoor', 'Импорт Kompas Indoor', 'manage_options', 'kompas-import', 'kompas_import_page' );
+	add_theme_page(
+		'Наполнение Kompas Indoor',
+		'Наполнение Kompas Indoor',
+		'manage_options',
+		'kompas-import',
+		'kompas_import_page'
+	);
 } );
 
 function kompas_import_page() {
@@ -24,148 +34,634 @@ function kompas_import_page() {
 	}
 	?>
 	<div class="wrap">
-		<h1>Импорт исходного контента Kompas Indoor</h1>
-		<p>Импорт создаёт базовые страницы и услугу, переносит исходные изображения в медиабиблиотеку и записывает их ID в ACF. Шаблоны никогда не обращаются к файлам из папки темы напрямую.</p>
-		<?php if ( is_wp_error( $result ) ) : ?><div class="notice notice-error"><p><?php echo esc_html( $result->get_error_message() ); ?></p></div><?php elseif ( $result ) : ?><div class="notice notice-success"><p>Импорт завершён. Изображения записаны в ACF, страницы и форма подготовлены.</p></div><?php endif; ?>
-		<form method="post"><?php wp_nonce_field( 'kompas_import_content' ); ?><p><button class="button button-primary" type="submit" name="kompas_import" value="1">Импортировать контент</button></p></form>
+		<h1>Наполнение Kompas Indoor</h1>
+		<p>Скрипт создаёт или обновляет страницы и три услуги, записывает тексты в ACF и обычный редактор WordPress. Изображения, галереи и логотипы не загружаются и не очищаются.</p>
+		<p>Повторный запуск обновляет текстовую часть и сохраняет уже выбранные медиафайлы.</p>
+		<?php if ( is_wp_error( $result ) ) : ?>
+			<div class="notice notice-error"><p><?php echo esc_html( $result->get_error_message() ); ?></p></div>
+		<?php elseif ( is_array( $result ) ) : ?>
+			<div class="notice notice-success"><p><?php echo esc_html( sprintf( 'Наполнение завершено: %d страниц, %d услуги.', $result['pages'], $result['services'] ) ); ?></p></div>
+		<?php endif; ?>
+		<form method="post">
+			<?php wp_nonce_field( 'kompas_import_content' ); ?>
+			<p><button class="button button-primary" type="submit" name="kompas_import" value="1">Заполнить тексты</button></p>
+		</form>
 	</div>
 	<?php
 }
 
-function kompas_import_image( $filename ) {
-	$existing = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'meta_key' => '_kompas_source_file', 'meta_value' => $filename, 'posts_per_page' => 1, 'fields' => 'ids' ) );
-	if ( $existing ) {
-		return (int) $existing[0];
+function kompas_content_is_list( $value ) {
+	if ( ! is_array( $value ) || array() === $value ) {
+		return is_array( $value );
 	}
 
-	$source = get_theme_file_path( 'assets/demo-images/' . $filename );
-	if ( ! file_exists( $source ) ) {
+	return array_keys( $value ) === range( 0, count( $value ) - 1 );
+}
+
+/**
+ * Merge imported text into an existing ACF value.
+ *
+ * For groups we keep keys which are not present in the import (most notably
+ * image/gallery fields). For repeaters we keep omitted keys in matching rows,
+ * but replace the amount/order of rows with the imported structure.
+ */
+function kompas_content_merge( $current, $incoming ) {
+	if ( ! is_array( $incoming ) ) {
+		return $incoming;
+	}
+
+	$current = is_array( $current ) ? $current : array();
+
+	if ( kompas_content_is_list( $incoming ) ) {
+		$result = array();
+		foreach ( $incoming as $index => $value ) {
+			$existing = array_key_exists( $index, $current ) ? $current[ $index ] : null;
+			$result[] = is_array( $value )
+				? kompas_content_merge( is_array( $existing ) ? $existing : array(), $value )
+				: $value;
+		}
+		return $result;
+	}
+
+	$result = $current;
+	foreach ( $incoming as $key => $value ) {
+		$existing = array_key_exists( $key, $result ) ? $result[ $key ] : null;
+		$result[ $key ] = is_array( $value )
+			? kompas_content_merge( is_array( $existing ) ? $existing : array(), $value )
+			: $value;
+	}
+
+	return $result;
+}
+
+function kompas_content_update_field( $name, $value, $post_id ) {
+	$current = get_field( $name, $post_id );
+	$value   = kompas_content_merge( is_array( $current ) ? $current : array(), $value );
+	return update_field( $name, $value, $post_id );
+}
+
+function kompas_content_find_or_create_page( $title, $slug, $template = 'default' ) {
+	$page = get_page_by_path( $slug, OBJECT, 'page' );
+
+	if ( $page ) {
+		$id = (int) $page->ID;
+		wp_update_post( array(
+			'ID'         => $id,
+			'post_title' => $title,
+			'post_name'  => $slug,
+		) );
+	} else {
+		$id = wp_insert_post( array(
+			'post_type'   => 'page',
+			'post_status' => 'publish',
+			'post_title'  => $title,
+			'post_name'   => $slug,
+		) );
+	}
+
+	if ( is_wp_error( $id ) || ! $id ) {
 		return 0;
 	}
 
-	require_once ABSPATH . 'wp-admin/includes/file.php';
-	require_once ABSPATH . 'wp-admin/includes/media.php';
-	require_once ABSPATH . 'wp-admin/includes/image.php';
-	$tmp = wp_tempnam( $filename );
-	if ( ! $tmp || ! copy( $source, $tmp ) ) {
-		return 0;
-	}
-
-	$id = media_handle_sideload( array( 'name' => $filename, 'tmp_name' => $tmp ), 0 );
-	if ( is_wp_error( $id ) ) {
-		@unlink( $tmp );
-		return 0;
-	}
-	update_post_meta( $id, '_kompas_source_file', $filename );
+	update_post_meta( $id, '_wp_page_template', $template );
 	return (int) $id;
 }
 
-function kompas_find_or_create_page( $title, $slug, $template ) {
-	$page = get_page_by_path( $slug );
-	$id = $page ? (int) $page->ID : wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $title, 'post_name' => $slug ) );
-	if ( $id && ! is_wp_error( $id ) ) {
-		update_post_meta( $id, '_wp_page_template', $template );
+function kompas_content_find_or_create_service( $title, $slug, $menu_order = 0 ) {
+	$post = get_page_by_path( $slug, OBJECT, 'services' );
+
+	if ( $post ) {
+		$id = (int) $post->ID;
+		wp_update_post( array(
+			'ID'         => $id,
+			'post_title' => $title,
+			'post_name'  => $slug,
+			'menu_order' => $menu_order,
+		) );
+	} else {
+		$id = wp_insert_post( array(
+			'post_type'   => 'services',
+			'post_status' => 'publish',
+			'post_title'  => $title,
+			'post_name'   => $slug,
+			'menu_order'  => $menu_order,
+		) );
 	}
-	return (int) $id;
+
+	return is_wp_error( $id ) ? 0 : (int) $id;
 }
 
-function kompas_create_cf7_form() {
-	if ( ! class_exists( 'WPCF7_ContactForm' ) ) {
-		return '';
+function kompas_content_set_post_content( $post_id, $content ) {
+	if ( ! $post_id ) {
+		return;
 	}
-	$found = get_page_by_title( 'Расчёт проекта', OBJECT, 'wpcf7_contact_form' );
-	if ( $found ) {
-		return '[contact-form-7 id="' . (int) $found->ID . '" title="Расчёт проекта"]';
-	}
-	$form = WPCF7_ContactForm::get_template( array( 'title' => 'Расчёт проекта' ) );
-	$form->set_properties( array(
-		'form' => '<div class="lead-form lead-form--compact"><label><span>Имя</span>[text* your-name placeholder "Имя"]</label><label><span>Компания</span>[text company placeholder "Компания"]</label><label><span>Телефон или email</span>[text* contact placeholder "Телефон / email"]</label><label><span>Города и тираж</span>[text cities placeholder "Города и тираж"]</label><label class="form-check">[acceptance privacy] Согласен на обработку персональных данных и принимаю политику конфиденциальности. [/acceptance]</label><label class="form-check">[checkbox marketing use_label_element "Хочу получать полезные материалы и предложения компании."]</label>[submit class:button "Получить расчёт"]</div>',
+
+	wp_update_post( array(
+		'ID'           => $post_id,
+		'post_content' => $content,
 	) );
-	$form->save();
-	return '[contact-form-7 id="' . (int) $form->id() . '" title="Расчёт проекта"]';
+}
+
+/**
+ * Keep the SEO copy in theme-owned meta and mirror it to Rank Math / Yoast
+ * when one of these plugins is active.
+ */
+function kompas_content_set_seo( $post_id, $title, $description ) {
+	update_post_meta( $post_id, '_kompas_seo_title', $title );
+	update_post_meta( $post_id, '_kompas_seo_description', $description );
+
+	if ( defined( 'RANK_MATH_VERSION' ) ) {
+		update_post_meta( $post_id, 'rank_math_title', $title );
+		update_post_meta( $post_id, 'rank_math_description', $description );
+	}
+
+	if ( defined( 'WPSEO_VERSION' ) ) {
+		update_post_meta( $post_id, '_yoast_wpseo_title', $title );
+		update_post_meta( $post_id, '_yoast_wpseo_metadesc', $description );
+	}
 }
 
 function kompas_run_import() {
-	if ( ! function_exists( 'update_field' ) ) {
-		return new WP_Error( 'acf_required', 'Для импорта необходимо активировать ACF Pro.' );
+	if ( ! function_exists( 'update_field' ) || ! function_exists( 'get_field' ) ) {
+		return new WP_Error( 'acf_required', 'Для наполнения необходимо активировать ACF Pro.' );
 	}
 
-	$img = function ( $name ) { return kompas_import_image( $name ); };
-	$home_id = kompas_find_or_create_page( 'Главная', 'glavnaya', 'default' );
-	$about_id = kompas_find_or_create_page( 'О компании', 'o-kompanii', 'page-o-kompanii.php' );
-	$contacts_id = kompas_find_or_create_page( 'Контакты', 'kontakty', 'page-kontakty.php' );
+	$home_id = kompas_content_find_or_create_page( 'Главная', 'glavnaya', 'default' );
+	$about_id = kompas_content_find_or_create_page( 'О компании', 'o-kompanii', 'page-o-kompanii.php' );
+	$services_page_id = kompas_content_find_or_create_page( 'Услуги офлайн-рекламы в Иркутске и по России', 'uslugi', 'default' );
+	$cases_id = kompas_content_find_or_create_page( 'Кейсы Компас Indoor', 'kejsy', 'default' );
+
+	if ( ! $home_id || ! $about_id || ! $services_page_id || ! $cases_id ) {
+		return new WP_Error( 'page_create_failed', 'Не удалось создать или обновить одну из страниц.' );
+	}
+
 	update_option( 'show_on_front', 'page' );
 	update_option( 'page_on_front', $home_id );
 
-	$service = get_posts( array( 'post_type' => 'services', 'posts_per_page' => 1, 'fields' => 'ids' ) );
-	$service_id = $service ? (int) $service[0] : (int) wp_insert_post( array( 'post_type' => 'services', 'post_status' => 'publish', 'post_title' => 'Расклейка объявлений', 'post_name' => 'raskleyka-obyavleniy' ) );
-	$shortcode = kompas_create_cf7_form();
-	$menu = wp_get_nav_menu_object( 'Основное меню' );
-	$menu_id = $menu ? (int) $menu->term_id : (int) wp_create_nav_menu( 'Основное меню' );
-	if ( $menu_id && ! wp_get_nav_menu_items( $menu_id ) ) {
-		wp_update_nav_menu_item( $menu_id, 0, array( 'menu-item-title' => 'Услуги', 'menu-item-url' => get_permalink( $service_id ), 'menu-item-status' => 'publish' ) );
-		wp_update_nav_menu_item( $menu_id, 0, array( 'menu-item-title' => 'О компании', 'menu-item-object' => 'page', 'menu-item-object-id' => $about_id, 'menu-item-type' => 'post_type', 'menu-item-status' => 'publish' ) );
-		wp_update_nav_menu_item( $menu_id, 0, array( 'menu-item-title' => 'Кейсы', 'menu-item-url' => home_url( '/#cases' ), 'menu-item-status' => 'publish' ) );
-		wp_update_nav_menu_item( $menu_id, 0, array( 'menu-item-title' => 'Контакты', 'menu-item-object' => 'page', 'menu-item-object-id' => $contacts_id, 'menu-item-type' => 'post_type', 'menu-item-status' => 'publish' ) );
+	$raskleyka_id = kompas_content_find_or_create_service( 'Расклейка объявлений', 'raskleyka-obyavleniy', 10 );
+	$mailboxes_id = kompas_content_find_or_create_service( 'Распространение по почтовым ящикам', 'rasprostranenie-po-pochtovym-yashchikam', 20 );
+	$promo_id = kompas_content_find_or_create_service( 'Промоакции', 'promoaktsii', 30 );
+
+	if ( ! $raskleyka_id || ! $mailboxes_id || ! $promo_id ) {
+		return new WP_Error( 'service_create_failed', 'Не удалось создать или обновить одну из услуг.' );
 	}
-	$locations = get_theme_mod( 'nav_menu_locations', array() );
-	$locations['main'] = $menu_id;
-	set_theme_mod( 'nav_menu_locations', $locations );
 
-	update_field( 'header', array( 'logo_mark' => $img( 'logo-mark.svg' ), 'brand_name' => 'КОМПАС — INDOOR', 'brand_caption' => 'Рекламная группа | Иркутск · Россия', 'phone' => '+7 3952 48-88-68', 'email' => 'info@kompas-indoor.ru', 'city' => 'Иркутск', 'button_text' => 'Рассчитать проект' ), 'option' );
-	update_field( 'forms', array( 'eyebrow' => 'Расчёт проекта', 'title' => 'Расскажите о задаче', 'text' => 'Укажите город, формат рекламы и тираж.', 'popup_shortcode' => $shortcode, 'success_eyebrow' => 'Готово', 'success_title' => 'Спасибо!', 'success_text' => 'Мы свяжемся с вами для уточнения проекта.' ), 'option' );
-	update_field( 'cookies', array( 'title' => 'Мы используем cookie', 'text' => 'Они помогают сайту работать корректно и анализировать посещаемость.', 'necessary_text' => 'Только необходимые', 'accept_text' => 'Принять' ), 'option' );
-
-	update_field( 'footer', array( 'tagline' => 'Офлайн-реклама там,<br>где находятся ваши клиенты.', 'copyright' => '© 2026 ООО «Компас-Индор»', 'legal' => 'Политика конфиденциальности · Согласие на обработку данных' ), 'option' );
-
-	update_field( 'glavnyj_ekran', array(
-		'title' => 'Расклейка объявлений,<br>листовки и промоакции<br>в Иркутске и по России',
-		'text' => 'Компас Indoor организует законное размещение рекламы, распространение по почтовым ящикам и работу промоутеров. Собственные рекламные поверхности в Иркутске и запуск кампаний более чем в 1000 городах России.',
-		'button_text' => 'Рассчитать проект', 'second_button' => array( 'url' => '#services', 'title' => 'Смотреть услуги', 'target' => '' ),
-		'stats' => array( array( 'value' => '1117', 'caption' => 'городов в географии проектов' ), array( 'value' => '16+', 'caption' => 'лет в офлайн-рекламе' ), array( 'value' => '100%', 'caption' => 'фотоотчёт по размещению' ) ),
-		'image' => $img( 'hero-main.webp' ),
+	/* Главная. */
+	kompas_content_update_field( 'glavnyj_ekran', array(
+		'title'       => 'Расклейка объявлений,<br>листовки и промоакции<br>в Иркутске и по России',
+		'text'        => 'Компас Indoor организует офлайн-рекламу в Иркутске и других городах России: законную расклейку объявлений, распространение листовок, газет и другой полиграфии по почтовым ящикам, а также промоакции с участием промоутеров.',
+		'button_text' => 'Рассчитать проект',
+		'second_button' => array(
+			'url'    => get_permalink( $services_page_id ),
+			'title'  => 'Смотреть услуги',
+			'target' => '',
+		),
+		'stats' => array(
+			array( 'value' => '1117', 'caption' => 'городов в географии проектов' ),
+			array( 'value' => '16+', 'caption' => 'лет в офлайн-рекламе' ),
+			array( 'value' => '4000+', 'caption' => 'исполнителей в сети' ),
+		),
 	), $home_id );
-	update_field( 'uslugi', array( 'items' => array(
-		array( 'image' => $img( 'service-pin.png' ), 'number' => '01', 'title' => 'Расклейка объявлений', 'text' => 'Законное размещение на рекламных поверхностях, подъездах и согласованных точках.', 'link' => array( 'url' => get_permalink( $service_id ), 'title' => 'Расклейка объявлений', 'target' => '' ) ),
-		array( 'image' => $img( 'service-mail.png' ), 'number' => '02', 'title' => 'Распространение<br>по ящикам', 'text' => 'Адресные программы, нужные тиражи и контроль выполнения.' ),
-		array( 'image' => $img( 'service-promo.png' ), 'number' => '03', 'title' => 'Промоакции', 'text' => 'Промоутеры, раздача, работа в местах трафика и отчётность.' ),
-	), 'eyebrow' => 'Что делаем', 'title' => 'Услуги офлайн-рекламы для бизнеса<br>и рекламных агентств', 'text' => 'Расклеиваем объявления, распространяем листовки по почтовым ящикам и проводим промоакции. Берём на себя тиражи, адресную программу, исполнителей, контроль и фотоотчёт.' ), $home_id );
-	update_field( 'fototchet', array( 'eyebrow' => 'Фотоотчёт', 'title' => 'Фото с размещений<br>и работы исполнителей', 'text' => 'На сайте показаны сцены с рекламными стендами, распространением по ящикам, работой промоутеров и контролем размещения.', 'images' => array( $img( 'gallery-1.webp' ), $img( 'gallery-2.webp' ), $img( 'gallery-3.webp' ) ) ), $home_id );
-	update_field( 'doverie', array( 'eyebrow' => 'Доверие', 'title' => 'Нам доверяют компании из Иркутска<br>и федеральные бренды', 'text' => 'В портфолио — регулярные размещения для Дом.ru, Иркутскэнергосбыта, МедСтандарта и других компаний.', 'logos' => array( array( 'image' => $img( 'client-domru.png' ) ), array( 'image' => $img( 'client-irkutskenergosbyt.png' ) ), array( 'image' => $img( 'client-medstandart.png' ) ), array( 'image' => $img( 'client-mntk.png' ) ) ) ), $home_id );
-	update_field( 'forma', array( 'title' => 'Нужно разместить рекламу<br>в Иркутске<br>или нескольких городах?', 'text' => 'Отправьте города, тираж и сроки. Рассчитаем стоимость и предложим подходящий формат.', 'shortcode' => $shortcode ), $home_id );
-	update_field( 'preimushhestva', array( 'eyebrow' => 'География', 'title' => 'Рекламные поверхности<br>в Иркутске и размещение<br>по городам России', 'text' => 'В Иркутске работаем на собственной сети рекламных поверхностей. Для региональных и федеральных кампаний подключаем исполнителей в других городах.', 'items' => array( array( 'number' => '1117 ГОРОДОВ', 'text' => 'Москва · Санкт-Петербург · Екатеринбург<br>Казань · Новосибирск · Красноярск · Владивосток<br>Иркутск · Ангарск · Братск · ещё 1000+ городов' ), array( 'title' => 'Иркутск', 'number' => '11 688', 'text' => 'рекламных поверхностей<br>у подъездов и жилых домов' ) ) ), $home_id );
 
-	update_field( 'glavnyj_ekran', array( 'eyebrow' => 'Компас Indoor', 'title' => 'Компас Indoor —<br>рекламная группа<br>из Иркутска,<br>работающая по России', 'text' => 'Основные направления — законная расклейка объявлений, распространение полиграфии по почтовым ящикам и промоакции.', 'stats' => array( array( 'value' => '2010', 'caption' => 'начало работы бренда' ), array( 'value' => '1117', 'caption' => 'городов' ), array( 'value' => '4000+', 'caption' => 'исполнителей в сети' ) ), 'image' => $img( 'team.webp' ) ), $about_id );
-	update_field( 'rekvizity', array( 'eyebrow' => 'Реквизиты', 'title' => 'Реквизиты<br>ООО «Компас-Индор»', 'text' => 'Юридические данные, адрес и документы компании должны быть доступны на сайте до заключения договора.', 'details' => '<p><strong>ООО «Компас-Индор»</strong><br>ИНН / ОГРН — заполните актуальными данными<br>Юридический адрес — заполните актуальными данными</p>', 'image' => $img( 'office.webp' ) ), $about_id );
-	update_field( 'glavnyj_ekran', array( 'eyebrow' => 'Контакты', 'title' => 'Контакты рекламной<br>группы Компас Indoor', 'text' => 'Свяжитесь с нами по телефону или отправьте задачу через форму. Для расчёта укажите город, услугу, тираж и желаемые сроки запуска.', 'button_text' => 'Рассчитать проект', 'image' => $img( 'contact-map.webp' ) ), $contacts_id );
-	update_field( 'kontakty', array( 'eyebrow' => 'Связаться', 'title' => 'Связаться с Компас Indoor', 'schedule' => 'Иркутск, Россия<br>Пн–Пт, 09:00–18:00', 'shortcode' => $shortcode ), $contacts_id );
-	update_field( 'ofis', array( 'eyebrow' => 'Офис', 'title' => 'Офис Компас Indoor<br>в Иркутске', 'map_label' => 'Map / Irkutsk', 'address' => 'Коммунистическая, 44', 'image' => $img( 'office.webp' ) ), $contacts_id );
+	kompas_content_update_field( 'uslugi', array(
+		'eyebrow' => 'Что делаем',
+		'title'   => 'Услуги офлайн-рекламы для бизнеса<br>и рекламных агентств',
+		'text'    => 'Можно заказать отдельную услугу или передать компании проект целиком: от адресной программы и получения тиража до работы исполнителей, контроля и итоговой отчётности.',
+		'items'   => array(
+			array(
+				'number' => '01',
+				'title'  => 'Расклейка объявлений',
+				'text'   => 'Законное размещение на собственных и согласованных рекламных поверхностях с подбором районов, контролем и фотоотчётом.',
+				'link'   => array( 'url' => get_permalink( $raskleyka_id ), 'title' => 'Расклейка объявлений', 'target' => '' ),
+			),
+			array(
+				'number' => '02',
+				'title'  => 'Распространение<br>по почтовым ящикам',
+				'text'   => 'Адресное и безадресное распространение листовок, газет, буклетов, меню и другой полиграфии по жилым домам.',
+				'link'   => array( 'url' => get_permalink( $mailboxes_id ), 'title' => 'Распространение по почтовым ящикам', 'target' => '' ),
+			),
+			array(
+				'number' => '03',
+				'title'  => 'Промоакции',
+				'text'   => 'Раздача листовок, буклетов, газет и флаеров: подбор точек, графика и исполнителей, контроль и отчётность.',
+				'link'   => array( 'url' => get_permalink( $promo_id ), 'title' => 'Промоакции', 'target' => '' ),
+			),
+		),
+	), $home_id );
 
-	update_field( 'glavnyj_ekran', array( 'eyebrow' => 'Расклейка объявлений', 'title' => 'Законная расклейка<br>объявлений в Иркутске<br>и других городах России', 'text' => 'Размещаем объявления на собственных и согласованных рекламных поверхностях. Подбираем районы и адреса, распределяем тираж, контролируем выполнение и передаём фотоотчёт.', 'button_text' => 'Рассчитать стоимость', 'second_button' => array( 'url' => '#process', 'title' => 'Как проходит контроль', 'target' => '' ), 'stats' => array( array( 'value' => 'от 1', 'caption' => 'города' ), array( 'value' => '100%', 'caption' => 'фотоотчёт' ), array( 'value' => '1117', 'caption' => 'городов' ) ), 'image' => $img( 'hero-service-collage.png' ) ), $service_id );
-	update_field( 'mesta', array( 'items' => array(
-		array( 'image' => $img( 'place-1-design.png' ), 'title' => 'Подъезды жилых домов', 'text' => 'Для локальных услуг, медицины, ремонта, доставки, фитнеса и других предложений рядом с домом.' ),
-		array( 'image' => $img( 'place-2-design.png' ), 'title' => 'Рекламные стенды у входа', 'text' => 'Хорошо работают на постоянный локальный охват и повторные контакты с жителями.' ),
-		array( 'image' => $img( 'place-3-design.png' ), 'title' => 'Остановки и места трафика', 'text' => 'Подходят для массовых предложений, акций и услуг с широкой аудиторией.' ),
-		array( 'image' => $img( 'place-4-design.png' ), 'title' => 'Районы рядом с точкой продаж', 'text' => 'Охватывают жителей нужных кварталов, офиса или нового объекта.' ),
-	), 'eyebrow' => 'Эффективные примеры размещения', 'title' => 'Эффективные места<br>для размещения', 'text' => 'Подбираем точки под задачу бизнеса, район и целевую аудиторию.', 'consult_title' => 'Не знаете, где разместиться?', 'consult_text' => 'Подберём районы, типы поверхностей и составим план размещения под вашу задачу и бюджет.' ), $service_id );
-	update_field( 'kontrol', array( 'eyebrow' => 'Контроль', 'title' => 'Фотоотчёт по выполненной расклейке', 'text' => 'После завершения работ передаём фотографии размещений.', 'panel_label' => 'Расклейка / Иркутск', 'panel_value' => '142 / 158 ТОЧЕК', 'panel_text' => '89,9% маршрута подтверждено', 'tags' => array( array( 'text' => 'Фото получено' ), array( 'text' => 'Геометка совпала' ), array( 'text' => 'Контроль подтверждён' ) ), 'image' => $img( 'control-map.webp' ) ), $service_id );
+	kompas_content_update_field( 'preimushhestva', array(
+		'eyebrow' => 'География',
+		'title'   => 'Работа в Иркутске<br>и по России',
+		'text'    => 'Компания начала работу в Иркутске и развила сеть исполнителей для запуска проектов в регионах. Кампанию можно централизованно организовать сразу в нескольких городах через одного подрядчика.',
+		'items'   => array(
+			array(
+				'title'  => 'Иркутск',
+				'number' => 'СВОЯ СЕТЬ',
+				'text'   => 'В Иркутске работаем с собственной сетью рекламных поверхностей у жилых домов и подъездов.',
+			),
+			array(
+				'title'  => 'Россия',
+				'number' => '1117',
+				'text'   => 'городов в географии проектов. Для многогородних кампаний работа и отчётность собираются централизованно.',
+			),
+		),
+	), $home_id );
 
-	update_field( 'model_raboty', array( 'eyebrow' => 'Модель', 'title' => 'Как устроена работа Компас Indoor', 'text' => 'Клиент ставит задачу и передаёт тираж. Команда подбирает адресную программу, распределяет материалы, назначает исполнителей, контролирует размещение и готовит отчёт.', 'items' => array( array( 'number' => '01', 'title' => 'Клиент', 'text' => 'задача / города / тираж' ), array( 'number' => '02', 'title' => 'Компас', 'text' => 'единый менеджер и схема запуска', 'dark' => 1 ), array( 'number' => '03', 'title' => 'Сеть', 'text' => 'координаторы и исполнители' ), array( 'number' => '04', 'title' => 'Контроль', 'text' => 'фото, проверка, отчёт' ) ) ), $about_id );
-	update_field( 'istoriya', array( 'eyebrow' => 'История', 'title' => 'От локальной расклейки в Иркутске<br>к проектам по всей России', 'items' => array( array( 'year' => '2010', 'text' => 'Старт в Иркутске' ), array( 'year' => '2016', 'text' => 'ООО «Компас-Индор»' ), array( 'year' => '2020', 'text' => 'Рост региональной сети' ), array( 'year' => '2026', 'text' => '1117 городов РФ', 'active' => 1 ) ) ), $about_id );
-	update_field( 'dlya_agentstv', array( 'eyebrow' => 'Для агентств', 'title' => 'Работаем с рекламными агентствами<br>как подрядчик по размещению', 'text' => 'Можем выполнить расклейку, распространение и промоакции в рамках проекта агентства, в том числе без прямого контакта с конечным клиентом.', 'items' => array( array( 'title' => 'NDA<br>и конфиденциальность' ), array( 'title' => 'Единая смета на города' ), array( 'title' => 'Контроль исполнения' ), array( 'title' => 'Отчётность под клиента' ) ) ), $about_id );
-	update_field( 'principy', array( 'eyebrow' => 'Принципы', 'title' => 'Принципы работы', 'items' => array( array( 'number' => '01', 'title' => 'Законность', 'text' => 'Используем собственные или согласованные поверхности.' ), array( 'number' => '02', 'title' => 'Контроль', 'text' => 'Фиксируем выполнение и передаём фотоотчёт.' ), array( 'number' => '03', 'title' => 'Масштаб', 'text' => 'Одна команда организует проект в Иркутске или одновременно в нескольких городах.' ) ) ), $about_id );
+	kompas_content_update_field( 'fototchet', array(
+		'eyebrow' => 'Контроль',
+		'title'   => 'Фотоотчёт<br>по выполненным работам',
+		'text'    => 'После выполнения заказчик получает отчётность по размещению или распространению. Это помогает подтвердить факт работ и сопоставить запланированную географию с фактически выполненной.',
+	), $home_id );
 
-	update_field( 'rekvizity', array( 'eyebrow' => 'Компания', 'title' => 'Реквизиты ООО «Компас-Индор»', 'items' => array( array( 'title' => 'ООО «Компас-Индор»', 'text' => 'Действующее юридическое лицо, Иркутск.' ), array( 'title' => 'ИНН / ОГРН', 'text' => 'Данные заполняются после финальной сверки.' ), array( 'title' => 'Договор и документы', 'text' => 'Данные заполняются после финальной сверки.' ) ) ), $contacts_id );
-	update_field( 'prizyv', array( 'title' => 'Нужно запустить рекламу сразу<br>в нескольких городах?', 'text' => 'Пришлите список городов, услугу, тираж и сроки. Подготовим единый расчёт и организуем размещение без поиска отдельных подрядчиков.', 'button_text' => 'Обсудить федеральный запуск' ), $contacts_id );
+	kompas_content_update_field( 'doverie', array(
+		'eyebrow' => 'Опыт',
+		'title'   => 'Офлайн-реклама для локального бизнеса,<br>федеральных компаний и агентств',
+		'text'    => 'Работаем как прямой подрядчик и как исполнитель рекламного агентства. При необходимости проект ведётся без прямого контакта с конечным заказчиком и с соблюдением конфиденциальности.',
+	), $home_id );
 
-	update_field( 'etapy', array( 'eyebrow' => 'Что входит', 'title' => 'Расклейка объявлений под ключ:<br>от адресной программы до отчёта', 'text' => 'Подходит для локальной рекламы, массового информирования жителей и регулярного продвижения услуг.', 'items' => array( array( 'number' => '01', 'title' => 'Адресная программа' ), array( 'number' => '02', 'title' => 'Получение тиража' ), array( 'number' => '03', 'title' => 'Подбор исполнителей' ), array( 'number' => '04', 'title' => 'Размещение' ), array( 'number' => '05', 'title' => 'Контроль' ), array( 'number' => '06', 'title' => 'Итоговый отчёт' ) ) ), $service_id );
-	update_field( 'formaty', array( 'eyebrow' => 'Форматы', 'title' => 'Где можно размещать объявления', 'text' => 'В Иркутске используем собственные рекламные поверхности у подъездов. В других городах формат размещения согласовывается под конкретную задачу и местные возможности.', 'items' => array( array( 'title' => 'Приподъездные стенды', 'text' => 'Контролируем точки размещения с привязкой к маршруту.' ), array( 'title' => 'Разрешённые доски', 'text' => 'Контролируем точки размещения с привязкой к маршруту.' ), array( 'title' => 'Жилые дома', 'text' => 'Контролируем точки размещения с привязкой к маршруту.' ), array( 'title' => 'Частный сектор', 'text' => 'Контролируем точки размещения с привязкой к маршруту.' ) ) ), $service_id );
-	update_field( 'faq', array( 'eyebrow' => 'FAQ', 'title' => 'Частые вопросы о расклейке<br>объявлений', 'items' => array(
-		array( 'question' => 'Какой минимальный объём?', 'answer' => 'Условия зависят от города и формата. Мы уточним задачу, предложим подходящий объём и включим контроль в расчёт.' ),
-		array( 'question' => 'Можно запустить несколько городов одновременно?', 'answer' => 'Да. Сформируем единую смету, распределим тираж и соберём общий отчёт.' ),
-		array( 'question' => 'Предоставляете фотоотчёт?', 'answer' => 'Да, после завершения работ передаём фотографии размещений.' ),
-		array( 'question' => 'Можно забрать тираж из типографии?', 'answer' => 'Уточним адрес типографии и включим получение тиража в организацию проекта.' ),
-		array( 'question' => 'Работаете с рекламными агентствами?', 'answer' => 'Да, в том числе по NDA и без прямого контакта с конечным клиентом.' ),
-	) ), $service_id );
-	return true;
+	kompas_content_update_field( 'forma', array(
+		'title' => 'Нужно разместить рекламу<br>в Иркутске или сразу<br>в нескольких городах?',
+		'text'  => 'Отправьте города, тираж и сроки — подготовим расчёт и предложим подходящий формат кампании.',
+	), $home_id );
+
+	kompas_content_set_seo(
+		$home_id,
+		'Офлайн-реклама в Иркутске и по России — Компас Indoor',
+		'Расклейка объявлений, распространение листовок по почтовым ящикам и промоакции в Иркутске и по России. Адресные программы, контроль выполнения и фотоотчёт.'
+	);
+
+	/* О компании. */
+	kompas_content_update_field( 'glavnyj_ekran', array(
+		'eyebrow' => 'О компании',
+		'title'   => 'Компас Indoor — рекламная группа<br>из Иркутска, работающая по России',
+		'text'    => 'Компас Indoor специализируется на офлайн-рекламе для бизнеса и рекламных агентств: расклейке объявлений, распространении полиграфии по почтовым ящикам и организации промоакций.',
+		'stats'   => array(
+			array( 'value' => '2010', 'caption' => 'начало работы бренда' ),
+			array( 'value' => '1117', 'caption' => 'городов в географии проектов' ),
+			array( 'value' => '4000+', 'caption' => 'исполнителей в сети' ),
+		),
+	), $about_id );
+
+	kompas_content_update_field( 'model_raboty', array(
+		'eyebrow' => 'Модель работы',
+		'title'   => 'Что берём на себя',
+		'text'    => 'Клиент передаёт задачу, города, тираж и сроки. Команда Компас Indoor формирует адресную программу, организует получение и распределение материалов, подключает исполнителей, контролирует выполнение и собирает итоговую отчётность.',
+		'items'   => array(
+			array( 'number' => '01', 'title' => 'Задача и география', 'text' => 'Уточняем города, территории, формат рекламы, тираж и сроки.' ),
+			array( 'number' => '02', 'title' => 'Адресная программа', 'text' => 'Подбираем районы, точки размещения или маршруты распространения.' ),
+			array( 'number' => '03', 'title' => 'Исполнители и контроль', 'text' => 'Распределяем работу и контролируем фактическое выполнение.' ),
+			array( 'number' => '04', 'title' => 'Отчётность', 'text' => 'Собираем подтверждения и передаём итоговый отчёт по проекту.' ),
+		),
+	), $about_id );
+
+	kompas_content_update_field( 'istoriya', array(
+		'eyebrow' => 'История',
+		'title'   => 'От локальных проектов в Иркутске<br>к работе по России',
+		'items'   => array(
+			array( 'year' => '2010', 'text' => 'Начало работы бренда в Иркутске.' ),
+			array( 'year' => 'Сегодня', 'text' => 'География проектов Компас Indoor охватывает 1117 городов России.' ),
+		),
+	), $about_id );
+
+	kompas_content_update_field( 'dlya_agentstv', array(
+		'eyebrow' => 'Для агентств',
+		'title'   => 'Работаем с рекламными агентствами<br>как подрядчик по офлайн-размещению',
+		'text'    => 'Возможна работа по готовому техническому заданию агентства, единая смета на несколько городов, согласованный формат отчётности и отсутствие прямого контакта с конечным клиентом.',
+		'items'   => array(
+			array( 'title' => 'Работа по техническому заданию' ),
+			array( 'title' => 'Единая смета на несколько городов' ),
+			array( 'title' => 'Согласованный формат отчётности' ),
+			array( 'title' => 'Конфиденциальность и NDA' ),
+		),
+	), $about_id );
+
+	kompas_content_update_field( 'principy', array(
+		'eyebrow' => 'Принципы',
+		'title'   => 'Принципы работы',
+		'items'   => array(
+			array( 'number' => '01', 'title' => 'Законность', 'text' => 'Для расклейки используются собственные или согласованные рекламные поверхности.' ),
+			array( 'number' => '02', 'title' => 'Контроль', 'text' => 'Выполнение фиксируется, после проекта предоставляется отчётность.' ),
+			array( 'number' => '03', 'title' => 'Масштаб', 'text' => 'Одна команда может организовать кампанию в Иркутске или сразу в нескольких городах России.' ),
+			array( 'number' => '04', 'title' => 'Прозрачность', 'text' => 'До старта согласовываются формат, территория, тираж, сроки и состав работ.' ),
+		),
+	), $about_id );
+
+	kompas_content_update_field( 'rekvizity', array(
+		'eyebrow' => 'Компания',
+		'title'   => 'Реквизиты и юридическая информация',
+		'text'    => 'ООО «Компас-Индор». Актуальные юридические данные, адрес и контакты необходимо сверить перед публикацией.',
+	), $about_id );
+
+	kompas_content_set_seo(
+		$about_id,
+		'О компании Компас Indoor — офлайн-реклама в Иркутске и по России',
+		'Компас Indoor — рекламная группа из Иркутска. Законная расклейка объявлений, распространение полиграфии и промоакции. Работа по России, контроль и фотоотчёт.'
+	);
+
+	/* Расклейка объявлений. */
+	kompas_content_update_field( 'glavnyj_ekran', array(
+		'eyebrow' => 'Расклейка объявлений',
+		'title'   => 'Законная расклейка объявлений<br>в Иркутске и других городах России',
+		'text'    => 'Компас Indoor организует расклейку объявлений под ключ: определяем районы, составляем адресную программу, получаем материалы, распределяем объём между исполнителями, контролируем размещение и готовим фотоотчёт.',
+		'button_text' => 'Рассчитать проект',
+		'second_button' => array( 'url' => '#process', 'title' => 'Как проходит работа', 'target' => '' ),
+		'stats' => array(
+			array( 'value' => '1117', 'caption' => 'городов в географии проектов' ),
+			array( 'value' => '16+', 'caption' => 'лет в офлайн-рекламе' ),
+			array( 'value' => 'Фотоотчёт', 'caption' => 'после выполнения работ' ),
+		),
+	), $raskleyka_id );
+
+	kompas_content_update_field( 'etapy', array(
+		'eyebrow' => 'Как работаем',
+		'title'   => 'Как проходит расклейка объявлений',
+		'text'    => 'Если проект проходит сразу в нескольких городах, заказчик получает единый расчёт и централизованное управление кампанией.',
+		'items'   => array(
+			array( 'number' => '01', 'title' => 'Уточняем задачу', 'text' => 'Определяем город, районы, формат объявления и тираж.' ),
+			array( 'number' => '02', 'title' => 'Готовим адресную программу', 'text' => 'Рассчитываем объём размещения по выбранной территории.' ),
+			array( 'number' => '03', 'title' => 'Получаем тираж', 'text' => 'Получаем или забираем материалы из согласованной точки.' ),
+			array( 'number' => '04', 'title' => 'Распределяем работу', 'text' => 'Назначаем маршруты и исполнителей.' ),
+			array( 'number' => '05', 'title' => 'Выполняем размещение', 'text' => 'Работаем по согласованной адресной программе.' ),
+			array( 'number' => '06', 'title' => 'Контролируем результат', 'text' => 'Собираем подтверждения и передаём итоговый фотоотчёт.' ),
+		),
+	), $raskleyka_id );
+
+	kompas_content_update_field( 'formaty', array(
+		'eyebrow' => 'Задачи',
+		'title'   => 'Какие задачи решает расклейка',
+		'text'    => 'Расклейка особенно полезна там, где нужно быстро донести информацию до жителей конкретной территории.',
+		'items'   => array(
+			array( 'title' => 'Локальное продвижение', 'text' => 'Продвижение услуг и предложений среди жителей выбранного района.' ),
+			array( 'title' => 'Информирование жителей', 'text' => 'Точечная коммуникация с конкретными домами, микрорайонами и территориями.' ),
+			array( 'title' => 'Открытие новых точек', 'text' => 'Охват жителей рядом с офисом, филиалом, магазином или новым объектом.' ),
+			array( 'title' => 'Регулярные кампании', 'text' => 'Плановое размещение для компаний с постоянной локальной рекламой.' ),
+		),
+	), $raskleyka_id );
+
+	kompas_content_update_field( 'mesta', array(
+		'eyebrow' => 'Размещение',
+		'title'   => 'Где размещаем объявления',
+		'text'    => 'В Иркутске используются собственные рекламные поверхности у подъездов и жилых домов. Для проектов в других городах формат размещения подбирается с учётом доступных поверхностей и местных условий.',
+		'items'   => array(
+			array( 'title' => 'Иркутск', 'text' => 'Собственная сеть рекламных поверхностей у жилых домов и подъездов.' ),
+			array( 'title' => 'Конкретный район', 'text' => 'Размещение можно сфокусировать на жилом массиве или территории рядом с точкой бизнеса.' ),
+			array( 'title' => 'Другие города России', 'text' => 'Используем согласованные и допустимые форматы размещения с учётом местных условий.' ),
+		),
+		'consult_title' => 'Нужно рассчитать размещение?',
+		'consult_text'  => 'Отправьте города, районы, тираж и желаемые сроки — рассчитаем стоимость и предложим схему размещения.',
+	), $raskleyka_id );
+
+	kompas_content_update_field( 'kontrol', array(
+		'eyebrow'    => 'Контроль',
+		'title'      => 'Фотоотчёт и контроль выполнения',
+		'text'       => 'После завершения работ передаём фотографии размещений. Это позволяет подтвердить факт выполнения и проверить фактическое прохождение адресной программы.',
+		'panel_label' => 'Отчётность',
+		'panel_value' => 'Фотоотчёт',
+		'panel_text'  => 'Для региональных проектов отчётность собирается централизованно.',
+		'tags'        => array(
+			array( 'text' => 'Факт размещения' ),
+			array( 'text' => 'Адресная программа' ),
+			array( 'text' => 'Единая отчётность' ),
+		),
+	), $raskleyka_id );
+
+	kompas_content_update_field( 'faq', array(
+		'eyebrow' => 'FAQ',
+		'title'   => 'Частые вопросы о расклейке объявлений',
+		'items'   => array(
+			array( 'question' => 'Какой минимальный объём расклейки?', 'answer' => 'Минимальный объём зависит от города, района и формата размещения. Оптимальный тираж лучше рассчитывать под конкретную задачу.' ),
+			array( 'question' => 'Можно ли провести расклейку сразу в нескольких городах?', 'answer' => 'Да. Кампанию можно организовать централизованно с единой сметой и общей отчётностью.' ),
+			array( 'question' => 'Предоставляется ли фотоотчёт?', 'answer' => 'Да. После выполнения передаём фотографии размещений.' ),
+			array( 'question' => 'Можно ли забрать тираж из типографии?', 'answer' => 'Да, если заранее согласовать адрес и условия получения материалов.' ),
+		),
+	), $raskleyka_id );
+
+	kompas_content_set_seo(
+		$raskleyka_id,
+		'Расклейка объявлений в Иркутске и по России — Компас Indoor',
+		'Законная расклейка объявлений в Иркутске и других городах России. Подбор районов, получение тиража, размещение, контроль и фотоотчёт.'
+	);
+
+	/* Распространение по почтовым ящикам. */
+	kompas_content_update_field( 'glavnyj_ekran', array(
+		'eyebrow' => 'Почтовые ящики',
+		'title'   => 'Распространение листовок<br>по почтовым ящикам<br>в Иркутске и по России',
+		'text'    => 'Компас Indoor организует распространение листовок, газет, буклетов, меню и другой печатной рекламы по почтовым ящикам. Формируем адресную программу, согласовываем объём, распределяем материалы между исполнителями и собираем отчётность.',
+		'button_text' => 'Рассчитать проект',
+		'second_button' => array( 'url' => '#process', 'title' => 'Как проходит работа', 'target' => '' ),
+		'stats' => array(
+			array( 'value' => '1117', 'caption' => 'городов в географии проектов' ),
+			array( 'value' => 'Адресно', 'caption' => 'по выбранным домам и территориям' ),
+			array( 'value' => 'Отчёт', 'caption' => 'по выполненному распространению' ),
+		),
+	), $mailboxes_id );
+
+	kompas_content_update_field( 'etapy', array(
+		'eyebrow' => 'Как работаем',
+		'title'   => 'Распространение по почтовым ящикам под ключ',
+		'text'    => 'Перед запуском определяем город, районы, количество домов и ориентировочный объём материалов, чтобы заранее спланировать тираж и маршруты.',
+		'items'   => array(
+			array( 'number' => '01', 'title' => 'Определяем географию', 'text' => 'Выбираем дома, кварталы или районы для охвата.' ),
+			array( 'number' => '02', 'title' => 'Формируем программу', 'text' => 'Готовим адресную или безадресную схему распространения.' ),
+			array( 'number' => '03', 'title' => 'Получаем материалы', 'text' => 'При необходимости получаем тираж из типографии или согласованной точки.' ),
+			array( 'number' => '04', 'title' => 'Распределяем тираж', 'text' => 'Делим материалы по маршрутам и исполнителям.' ),
+			array( 'number' => '05', 'title' => 'Выполняем распространение', 'text' => 'Работаем по согласованной территории.' ),
+			array( 'number' => '06', 'title' => 'Собираем отчётность', 'text' => 'Данные по нескольким территориям и городам собираются централизованно.' ),
+		),
+	), $mailboxes_id );
+
+	kompas_content_update_field( 'formaty', array(
+		'eyebrow' => 'Для бизнеса',
+		'title'   => 'Для каких задач подходит распространение по ящикам',
+		'text'    => 'Формат особенно полезен для предложений, связанных с местом проживания клиента и конкретной территорией.',
+		'items'   => array(
+			array( 'title' => 'Доставка и розница', 'text' => 'Локальные предложения для жителей конкретных домов и кварталов.' ),
+			array( 'title' => 'Недвижимость и медицина', 'text' => 'Территориальный охват рядом с объектами, клиниками и филиалами.' ),
+			array( 'title' => 'Фитнес и услуги для дома', 'text' => 'Продвижение услуг, которыми жители пользуются рядом с местом проживания.' ),
+			array( 'title' => 'Провайдеры и локальные акции', 'text' => 'Информирование выбранных домов и районов о подключениях и специальных предложениях.' ),
+		),
+	), $mailboxes_id );
+
+	kompas_content_update_field( 'mesta', array(
+		'eyebrow' => 'География',
+		'title'   => 'Адресное и безадресное распространение',
+		'text'    => 'Если нужно охватить конкретные дома, используется адресная программа. Для более широкой задачи можно сформировать схему распространения по выбранной территории.',
+		'items'   => array(
+			array( 'title' => 'Конкретные дома', 'text' => 'Адресная программа для точного охвата нужных домов и жилых комплексов.' ),
+			array( 'title' => 'Выбранный район', 'text' => 'Массовое распространение по согласованной территории внутри города.' ),
+			array( 'title' => 'Несколько городов', 'text' => 'Тираж и маршруты распределяются по городам, а отчётность собирается в одном проекте.' ),
+		),
+		'consult_title' => 'Нужно подобрать адресную программу?',
+		'consult_text'  => 'Укажите города или районы, тираж и формат полиграфии — подготовим расчёт и предложим схему распространения.',
+	), $mailboxes_id );
+
+	kompas_content_update_field( 'kontrol', array(
+		'eyebrow'    => 'Контроль',
+		'title'      => 'Контроль и отчётность',
+		'text'       => 'После выполнения работ заказчик получает отчётность по распространению. Для проектов с несколькими территориями данные собираются централизованно.',
+		'panel_label' => 'Проект',
+		'panel_value' => 'Единый отчёт',
+		'panel_text'  => 'Контроль позволяет сопоставить запланированную географию и фактически выполненную работу.',
+		'tags'        => array(
+			array( 'text' => 'Адресная программа' ),
+			array( 'text' => 'Маршруты' ),
+			array( 'text' => 'Тираж' ),
+		),
+	), $mailboxes_id );
+
+	kompas_content_update_field( 'faq', array(
+		'eyebrow' => 'FAQ',
+		'title'   => 'Частые вопросы о распространении по почтовым ящикам',
+		'items'   => array(
+			array( 'question' => 'Можно ли распространить листовки только в определённых домах?', 'answer' => 'Да. Для таких задач составляется адресная программа по выбранной территории.' ),
+			array( 'question' => 'Можно ли организовать кампанию в нескольких городах одновременно?', 'answer' => 'Да. Тираж и маршруты распределяются по городам, а отчётность собирается централизованно.' ),
+			array( 'question' => 'Какие материалы можно распространять?', 'answer' => 'Листовки, буклеты, газеты, меню, флаеры и другую полиграфию подходящего формата.' ),
+			array( 'question' => 'Вы можете забрать тираж из типографии?', 'answer' => 'Да, возможность получения материалов согласовывается перед запуском проекта.' ),
+		),
+	), $mailboxes_id );
+
+	kompas_content_set_seo(
+		$mailboxes_id,
+		'Распространение листовок по почтовым ящикам — Иркутск и Россия',
+		'Распространение листовок, газет и буклетов по почтовым ящикам. Адресные программы, получение тиража, исполнители, контроль и фотоотчёт в Иркутске и других городах России.'
+	);
+
+	/* Промоакции. */
+	kompas_content_update_field( 'glavnyj_ekran', array(
+		'eyebrow' => 'Промоакции',
+		'title'   => 'Промоакции и раздача листовок<br>в Иркутске и по России',
+		'text'    => 'Компас Indoor организует промоакции в Иркутске и других городах России: раздачу листовок, буклетов, газет, флаеров и другой рекламной полиграфии в местах трафика и рядом с торговыми точками.',
+		'button_text' => 'Рассчитать проект',
+		'second_button' => array( 'url' => '#process', 'title' => 'Как проходит работа', 'target' => '' ),
+		'stats' => array(
+			array( 'value' => '1117', 'caption' => 'городов в географии проектов' ),
+			array( 'value' => 'Точки', 'caption' => 'подбираются под задачу и аудиторию' ),
+			array( 'value' => 'Контроль', 'caption' => 'выхода исполнителей и отчётности' ),
+		),
+	), $promo_id );
+
+	kompas_content_update_field( 'etapy', array(
+		'eyebrow' => 'Как работаем',
+		'title'   => 'Организация промоакций под ключ',
+		'text'    => 'Уточняем задачу и аудиторию, подбираем точки, рассчитываем количество исполнителей и продолжительность работы, распределяем материалы и контролируем проведение акции.',
+		'items'   => array(
+			array( 'number' => '01', 'title' => 'Задача и аудитория', 'text' => 'Определяем предложение, аудиторию и географию кампании.' ),
+			array( 'number' => '02', 'title' => 'Подбор точек', 'text' => 'Выбираем места, где находится нужная аудитория.' ),
+			array( 'number' => '03', 'title' => 'Расчёт команды', 'text' => 'Определяем количество исполнителей и продолжительность работы.' ),
+			array( 'number' => '04', 'title' => 'График', 'text' => 'Формируем точки и график выходов.' ),
+			array( 'number' => '05', 'title' => 'Материалы', 'text' => 'Распределяем рекламные материалы между исполнителями.' ),
+			array( 'number' => '06', 'title' => 'Контроль и отчёт', 'text' => 'Контролируем проведение акции и собираем итоговую отчётность.' ),
+		),
+	), $promo_id );
+
+	kompas_content_update_field( 'formaty', array(
+		'eyebrow' => 'Материалы',
+		'title'   => 'Какие материалы можно распространять',
+		'text'    => 'Конкретный формат зависит от кампании, объёма тиража и выбранной механики.',
+		'items'   => array(
+			array( 'title' => 'Листовки и флаеры', 'text' => 'Компактные материалы для массовой раздачи в точках трафика.' ),
+			array( 'title' => 'Буклеты и газеты', 'text' => 'Полиграфия для предложений, которым требуется больше информации.' ),
+			array( 'title' => 'Купоны и меню', 'text' => 'Материалы для локальных акций, заведений и торговых точек.' ),
+			array( 'title' => 'Другая полиграфия', 'text' => 'Формат согласовывается под задачу, тираж и механику промоакции.' ),
+		),
+	), $promo_id );
+
+	kompas_content_update_field( 'mesta', array(
+		'eyebrow' => 'Локации',
+		'title'   => 'Где можно проводить промоакции',
+		'text'    => 'Локации подбираются не только по трафику, но и по соответствию предложению клиента и его целевой аудитории.',
+		'items'   => array(
+			array( 'title' => 'Рядом с торговыми точками', 'text' => 'Для продвижения магазинов, филиалов, заведений и локальных специальных предложений.' ),
+			array( 'title' => 'Места пешеходного трафика', 'text' => 'Для кампаний, которым нужен широкий поток потенциальной аудитории.' ),
+			array( 'title' => 'Рядом с жилыми массивами', 'text' => 'Для локальных услуг и бизнеса, ориентированного на жителей конкретной территории.' ),
+		),
+		'consult_title' => 'Нужно подобрать точки и график?',
+		'consult_text'  => 'Расскажите, где планируется акция, какой тираж нужно распространить и в какие сроки — подготовим расчёт и схему запуска.',
+	), $promo_id );
+
+	kompas_content_update_field( 'kontrol', array(
+		'eyebrow'    => 'Исполнители',
+		'title'      => 'Подбор и контроль промоутеров',
+		'text'       => 'Перед запуском формируется график, распределяются точки и объёмы материалов. В процессе работы контролируется выполнение, а после завершения подготавливается отчёт.',
+		'panel_label' => 'Промоакция',
+		'panel_value' => 'Контроль выхода',
+		'panel_text'  => 'Формат контроля и отчётности согласовывается перед запуском кампании.',
+		'tags'        => array(
+			array( 'text' => 'Точки' ),
+			array( 'text' => 'График' ),
+			array( 'text' => 'Отчётность' ),
+		),
+	), $promo_id );
+
+	kompas_content_update_field( 'faq', array(
+		'eyebrow' => 'FAQ',
+		'title'   => 'Частые вопросы о промоакциях',
+		'items'   => array(
+			array( 'question' => 'Можно ли заказать промоутеров только на несколько часов?', 'answer' => 'Да, длительность и количество исполнителей рассчитываются под конкретную задачу и точки.' ),
+			array( 'question' => 'Можно ли провести акцию сразу в нескольких местах?', 'answer' => 'Да. Можно распределить промоутеров по нескольким точкам и собрать единую отчётность.' ),
+			array( 'question' => 'Предоставляется ли фотоотчёт?', 'answer' => 'Да, формат контроля и отчётности согласовывается перед запуском.' ),
+			array( 'question' => 'Можно ли провести промоакцию в нескольких городах?', 'answer' => 'Да. Компания организует региональные проекты через сеть исполнителей.' ),
+		),
+	), $promo_id );
+
+	kompas_content_set_seo(
+		$promo_id,
+		'Промоакции и раздача листовок в Иркутске и по России — Компас Indoor',
+		'Организация промоакций: раздача листовок, буклетов, газет и флаеров. Подбор промоутеров, точки, график, контроль и фотоотчёт в Иркутске и других городах России.'
+	);
+
+	/* Related service links. */
+	kompas_content_update_field( 'svyazannye_uslugi', array(
+		'eyebrow' => 'Другие услуги',
+		'title'   => 'Другие форматы офлайн-рекламы',
+		'items'   => array( $mailboxes_id, $promo_id ),
+	), $raskleyka_id );
+	kompas_content_update_field( 'svyazannye_uslugi', array(
+		'eyebrow' => 'Другие услуги',
+		'title'   => 'Другие форматы офлайн-рекламы',
+		'items'   => array( $raskleyka_id, $promo_id ),
+	), $mailboxes_id );
+	kompas_content_update_field( 'svyazannye_uslugi', array(
+		'eyebrow' => 'Другие услуги',
+		'title'   => 'Другие форматы офлайн-рекламы',
+		'items'   => array( $raskleyka_id, $mailboxes_id ),
+	), $promo_id );
+
+	/* Общая страница услуг. */
+	$services_content  = '<p>Компас Indoor организует офлайн-рекламу для локального бизнеса, федеральных компаний и рекламных агентств. Основные направления — законная расклейка объявлений, распространение полиграфии по почтовым ящикам и проведение промоакций.</p>';
+	$services_content .= '<p>Можно заказать отдельную услугу или передать компании проект целиком: от адресной программы и получения тиража до работы исполнителей, контроля и итоговой отчётности.</p>';
+	$services_content .= '<h2>Расклейка объявлений</h2><p>Размещаем объявления на собственных и согласованных рекламных поверхностях. В Иркутске работаем с собственной сетью поверхностей у жилых домов и подъездов. Подбираем районы и точки, распределяем тираж, контролируем выполнение и передаём фотоотчёт.</p><p><a href="' . esc_url( get_permalink( $raskleyka_id ) ) . '">Подробнее о расклейке объявлений</a></p>';
+	$services_content .= '<h2>Распространение листовок по почтовым ящикам</h2><p>Организуем адресное и безадресное распространение листовок, газет, буклетов, меню и другой полиграфии по жилым домам. Формируем территорию охвата, рассчитываем тираж, распределяем материалы и собираем отчётность.</p><p><a href="' . esc_url( get_permalink( $mailboxes_id ) ) . '">Подробнее о распространении по почтовым ящикам</a></p>';
+	$services_content .= '<h2>Промоакции</h2><p>Организуем раздачу листовок, буклетов, газет и флаеров с участием промоутеров. Подбираем точки, график и количество исполнителей, распределяем материалы и контролируем проведение акции.</p><p><a href="' . esc_url( get_permalink( $promo_id ) ) . '">Подробнее о промоакциях</a></p>';
+	$services_content .= '<h2>Проекты в нескольких городах</h2><p>География проектов Компас Indoor охватывает 1117 городов России. Один проект можно запускать одновременно в нескольких регионах через единую команду, смету и систему отчётности. Для рекламных агентств возможна подрядная модель без прямого контакта с конечным заказчиком.</p>';
+	$services_content .= '<h2>Что входит в организацию проекта</h2><ul><li>уточнение задачи и географии;</li><li>адресная программа или подбор точек;</li><li>получение и распределение тиража;</li><li>подбор исполнителей;</li><li>запуск и контроль;</li><li>фотоотчёт и итоговая отчётность.</li></ul>';
+	$services_content .= '<p><strong>Не уверены, какой формат подойдёт?</strong> Отправьте города, тираж и задачу — предложим вариант размещения и рассчитаем проект.</p>';
+	kompas_content_set_post_content( $services_page_id, $services_content );
+	kompas_content_set_seo(
+		$services_page_id,
+		'Услуги офлайн-рекламы в Иркутске и по России — Компас Indoor',
+		'Расклейка объявлений, распространение листовок по почтовым ящикам и промоакции. Офлайн-реклама для бизнеса и агентств в Иркутске и других городах России.'
+	);
+
+	/* Кейсы: только подтверждаемая информация из существующих материалов, без выдуманных KPI. */
+	$cases_content  = '<p>Офлайн-реклама особенно хорошо раскрывается через реальные задачи: где нужно было разместить объявления, какую территорию охватить, какой формат выбрать и как контролировалось выполнение.</p>';
+	$cases_content .= '<p>В кейсах не используются неподтверждённые показатели эффективности: только известная задача, формат работ и фактическая обратная связь клиента.</p>';
+	$cases_content .= '<h2>Иркутскэнергосбыт — информирование жителей микрорайонов</h2><p><strong>Задача:</strong> оперативно донести важную информацию до жителей отдельных микрорайонов Иркутска с точной территориальной привязкой.</p><p><strong>Решение:</strong> расклейка объявлений по выбранным территориям и адресной программе с контролем выполнения.</p><p><a href="' . esc_url( get_permalink( $raskleyka_id ) ) . '">Услуга: расклейка объявлений</a></p>';
+	$cases_content .= '<h2>«Суши-шоп» — распространение меню по почтовым ящикам</h2><p><strong>Задача:</strong> привлечь жителей новостроек и получить локальный охват вокруг зон доставки.</p><p><strong>Решение:</strong> распространение печатного меню по почтовым ящикам в выбранных жилых домах.</p><p><a href="' . esc_url( get_permalink( $mailboxes_id ) ) . '">Услуга: распространение по почтовым ящикам</a></p>';
+	$cases_content .= '<h2>Дом.ru — регулярные офлайн-размещения</h2><p>На старом сайте опубликован отзыв представителя Дом.ru, в котором отмечаются многолетнее сотрудничество, соблюдение сроков, отчётность и оперативное решение рабочих вопросов. Конкретные города, объёмы и периоды для отдельного кейса следует публиковать только после внутренней сверки.</p>';
+	$cases_content .= '<h2>«Пересвет-Недвижимость» — от расклейки к регулярному размещению</h2><p>Сотрудничество начиналось с расклейки на подъездных стендах и продолжилось более длительным размещением. Точные объёмы и сроки для отдельной страницы кейса необходимо подтвердить внутри компании.</p>';
+	$cases_content .= '<p><strong>Нужен похожий проект?</strong> Расскажите о задаче, городах и тираже — предложим формат размещения и подготовим расчёт.</p>';
+	kompas_content_set_post_content( $cases_id, $cases_content );
+	kompas_content_set_seo(
+		$cases_id,
+		'Кейсы офлайн-рекламы — Компас Indoor',
+		'Примеры проектов Компас Indoor: расклейка объявлений, распространение листовок и офлайн-реклама для бизнеса в Иркутске и других городах России.'
+	);
+
+	flush_rewrite_rules( false );
+
+	return array(
+		'pages'    => 4,
+		'services' => 3,
+	);
 }
