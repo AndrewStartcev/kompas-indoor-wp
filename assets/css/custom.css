@@ -1,0 +1,17 @@
+/* Проектные правки, состояния CF7 и служебные модальные окна. */
+.wpcf7-form .wpcf7-not-valid { border-color: #dc2530; }
+.wpcf7-not-valid-tip { color: #dc2530; display: block; font-size: 13px; margin-top: 6px; }
+.wpcf7 form .wpcf7-response-output { display: none; }
+.wpcf7-spinner { margin: 0 0 0 12px; }
+.wpcf7-submit:disabled { cursor: wait; opacity: .65; }
+.success-modal { align-items: center; background: rgba(5, 14, 35, .72); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 1001; }
+.success-modal[hidden] { display: none; }
+.success-modal .modal__dialog { position: relative; }
+.lead-form label:not(.form-check) > span:first-child {display: none}
+img {
+    height: auto!important;
+}
+
+.menu-item {
+    list-style: none;
+}

@@ -1,0 +1,45 @@
+<?php get_header(); ?>
+<?php $hero = kompas_group( 'glavnyj_ekran' ); ?>
+<?php if ( $hero ) : ?>
+<section class="hero dark-card hero--home">
+	<div class="hero-copy">
+		<h1><?php echo wp_kses_post( $hero['title'] ?? '' ); ?></h1>
+		<p><?php echo wp_kses_post( $hero['text'] ?? '' ); ?></p>
+		<div class="actions"><button class="button" type="button" data-estimate><?php echo esc_html( $hero['button_text'] ?? '' ); ?></button><?php kompas_link( $hero['second_button'] ?? array(), 'button button--light' ); ?></div>
+		<div class="stats"><?php foreach ( (array) ( $hero['stats'] ?? array() ) as $item ) : ?><div><b><?php echo esc_html( $item['value'] ?? '' ); ?></b><span><?php echo esc_html( $item['caption'] ?? '' ); ?></span></div><?php endforeach; ?></div>
+	</div>
+	<?php kompas_image( $hero['image'] ?? null, 'full' ); ?>
+</section>
+<?php endif; ?>
+
+<?php $services = kompas_group( 'uslugi' ); ?>
+<?php if ( $services ) : ?>
+<section id="services"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $services['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $services['title'] ?? '' ); ?></h2><p><?php echo wp_kses_post( $services['text'] ?? '' ); ?></p></div>
+	<div class="card-grid card-grid--3">
+	<?php foreach ( (array) ( $services['items'] ?? array() ) as $item ) : ?>
+		<a class="service-card light-card" href="<?php echo esc_url( $item['link']['url'] ?? '#' ); ?>"><div class="service-card__top"><span class="service-card__meta"><?php kompas_image( $item['image'] ?? null, 'full', array( 'alt' => '' ) ); ?><span><?php echo esc_html( $item['number'] ?? '' ); ?></span></span><span class="arrow">↗</span></div><h3><?php echo wp_kses_post( $item['title'] ?? '' ); ?></h3><p><?php echo esc_html( $item['text'] ?? '' ); ?></p></a>
+	<?php endforeach; ?>
+	</div>
+</section>
+<?php endif; ?>
+
+<?php $advantages = kompas_group( 'preimushhestva' ); ?>
+<?php if ( $advantages ) : $geo_items = (array) ( $advantages['items'] ?? array() ); ?>
+<section class="light-card geography"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $advantages['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $advantages['title'] ?? '' ); ?></h2><p><?php echo esc_html( $advantages['text'] ?? '' ); ?></p></div><div class="geography-grid"><?php foreach ( $geo_items as $index => $item ) : ?><div class="<?php echo $index ? 'dark-panel' : 'pale-panel'; ?>"><?php if ( $index ) : ?><span class="eyebrow"><?php echo esc_html( $item['title'] ?? '' ); ?></span><?php endif; ?><b><?php echo esc_html( $item['number'] ?? '' ); ?></b><p><?php echo wp_kses_post( $item['text'] ?? '' ); ?></p></div><?php endforeach; ?></div></section>
+<?php endif; ?>
+
+<?php $gallery = kompas_group( 'fototchet' ); ?>
+<?php if ( $gallery ) : ?>
+<section class="dark-card gallery" id="cases"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $gallery['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $gallery['title'] ?? '' ); ?></h2><p><?php echo esc_html( $gallery['text'] ?? '' ); ?></p></div><div class="gallery-grid"><?php foreach ( (array) ( $gallery['images'] ?? array() ) as $image ) { kompas_image( $image, 'full' ); } ?></div></section>
+<?php endif; ?>
+
+<?php $trust = kompas_group( 'doverie' ); ?>
+<?php if ( $trust ) : ?>
+<section class="light-card trust"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $trust['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $trust['title'] ?? '' ); ?></h2><p><?php echo esc_html( $trust['text'] ?? '' ); ?></p></div><div class="logos"><?php foreach ( (array) ( $trust['logos'] ?? array() ) as $item ) { kompas_image( $item['image'] ?? null, 'full' ); } ?></div></section>
+<?php endif; ?>
+
+<?php $cta = kompas_group( 'forma' ); ?>
+<?php if ( $cta ) : ?>
+<section class="cta cta--form"><div><h2><?php echo wp_kses_post( $cta['title'] ?? '' ); ?></h2><p><?php echo esc_html( $cta['text'] ?? '' ); ?></p></div><div><?php if ( ! empty( $cta['shortcode'] ) ) { echo do_shortcode( $cta['shortcode'] ); } ?></div></section>
+<?php endif; ?>
+<?php get_footer(); ?>

@@ -1,0 +1,19 @@
+<?php
+$header = kompas_group( 'header', 'option' );
+$phone = (string) ( $header['phone'] ?? '' );
+?>
+<header class="header shell">
+	<a class="brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?> — главная">
+		<?php kompas_image( $header['logo_mark'] ?? null, 'full', array( 'class' => 'brand__mark', 'alt' => '' ) ); ?>
+		<span class="brand__text">
+			<strong><?php echo wp_kses_post( $header['brand_name'] ?? '' ); ?></strong>
+			<small><?php echo esc_html( $header['brand_caption'] ?? '' ); ?></small>
+		</span>
+	</a>
+	<button class="menu-button" type="button" aria-expanded="false" aria-label="Открыть меню"><span></span><span></span><span></span></button>
+	<nav class="nav" aria-label="Основная навигация">
+		<?php wp_nav_menu( array( 'theme_location' => 'main', 'container' => false, 'items_wrap' => '%3$s', 'fallback_cb' => false ) ); ?>
+	</nav>
+	<?php if ( $phone ) : ?><a class="header-phone" href="<?php echo esc_url( kompas_phone_href( $phone ) ); ?>"><?php echo esc_html( $phone ); ?></a><?php endif; ?>
+	<button class="button button--small" type="button" data-estimate><?php echo esc_html( $header['button_text'] ?? 'Рассчитать проект' ); ?></button>
+</header>
