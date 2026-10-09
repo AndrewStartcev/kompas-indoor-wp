@@ -30,7 +30,11 @@
 
 <?php $gallery = kompas_group( 'fototchet' ); ?>
 <?php if ( $gallery ) : ?>
-<section class="dark-card gallery" id="cases"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $gallery['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $gallery['title'] ?? '' ); ?></h2><p><?php echo esc_html( $gallery['text'] ?? '' ); ?></p></div><div class="gallery-grid"><?php foreach ( (array) ( $gallery['images'] ?? array() ) as $image ) { kompas_image( $image, 'full' ); } ?></div></section>
+<section class="dark-card gallery" id="cases"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $gallery['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $gallery['title'] ?? '' ); ?></h2><p><?php echo esc_html( $gallery['text'] ?? '' ); ?></p></div><div class="gallery-grid gallery-grid--reports">
+<?php if ( ! empty( $gallery['examples'] ) ) : ?>
+	<?php foreach ( (array) $gallery['examples'] as $example ) : if ( empty( $example['image'] ) ) { continue; } ?><figure class="gallery-report"><?php kompas_image( $example['image'], 'large', array( 'loading' => 'lazy' ) ); ?><figcaption><?php echo esc_html( $example['title'] ?? '' ); ?></figcaption></figure><?php endforeach; ?>
+<?php else : foreach ( (array) ( $gallery['images'] ?? array() ) as $image ) : ?><figure class="gallery-report"><?php kompas_image( $image, 'large', array( 'loading' => 'lazy' ) ); ?></figure><?php endforeach; endif; ?>
+</div></section>
 <?php endif; ?>
 
 <?php $trust = kompas_group( 'doverie' ); ?>
@@ -38,8 +42,10 @@
 <section class="light-card trust"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $trust['eyebrow'] ?? '' ); ?></span><h2><?php echo wp_kses_post( $trust['title'] ?? '' ); ?></h2><p><?php echo esc_html( $trust['text'] ?? '' ); ?></p></div><div class="logos"><?php foreach ( (array) ( $trust['logos'] ?? array() ) as $item ) { kompas_image( $item['image'] ?? null, 'full' ); } ?></div></section>
 <?php endif; ?>
 
+<?php get_template_part( 'template-parts/common/reviews' ); ?>
+
 <?php $cta = kompas_group( 'forma' ); ?>
 <?php if ( $cta ) : ?>
-<section class="cta cta--form"><div><h2><?php echo wp_kses_post( $cta['title'] ?? '' ); ?></h2><p><?php echo esc_html( $cta['text'] ?? '' ); ?></p></div><div><?php if ( ! empty( $cta['shortcode'] ) ) { echo do_shortcode( $cta['shortcode'] ); } ?></div></section>
+<section class="cta cta--form"><div class="home-cta__copy"><h2><?php echo wp_kses_post( $cta['title'] ?? '' ); ?></h2><p><?php echo esc_html( $cta['text'] ?? '' ); ?></p><div class="home-cta__dialog"><?php if ( ! empty( $cta['manager_avatar'] ) ) : ?><div class="home-cta__avatar"><?php kompas_image( $cta['manager_avatar'], 'thumbnail', array( 'loading' => 'lazy' ) ); ?></div><?php endif; ?><div class="home-cta__bubble"><span><?php echo esc_html( $cta['manager_name'] ?: 'Татьяна Вовк' ); ?></span><p><?php echo esc_html( $cta['manager_message'] ?: 'Расскажите о задаче — поможем выбрать формат и быстро подготовим предложение.' ); ?></p></div></div></div><div><?php if ( ! empty( $cta['shortcode'] ) ) { echo do_shortcode( $cta['shortcode'] ); } ?></div></section>
 <?php endif; ?>
 <?php get_footer(); ?>
