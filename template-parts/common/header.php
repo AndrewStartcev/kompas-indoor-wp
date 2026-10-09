@@ -15,5 +15,5 @@ $phone = (string) ( $header['phone'] ?? '' );
 		<?php wp_nav_menu( array( 'theme_location' => 'main', 'container' => false, 'items_wrap' => '%3$s', 'fallback_cb' => false ) ); ?>
 	</nav>
 	<?php if ( $phone ) : ?><a class="header-phone" href="<?php echo esc_url( kompas_phone_href( $phone ) ); ?>"><?php echo esc_html( $phone ); ?></a><?php endif; ?>
-	<button class="button button--small" type="button" data-estimate><?php echo esc_html( $header['button_text'] ?? 'Рассчитать проект' ); ?></button>
+	<button class="button button--small" type="button" data-estimate><?php echo esc_html( kompas_cta_label( $header['button_text'] ?? '' ) ); ?></button>
 </header>
