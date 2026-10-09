@@ -49,7 +49,7 @@ add_filter( 'wp_nav_menu_items', function ( $items, $args ) {
 	$url = get_post_type_archive_link( 'vacancies' );
 	if ( $url && false === strpos( $items, esc_url( $url ) ) ) {
 		$current = is_post_type_archive( 'vacancies' ) || is_singular( 'vacancies' );
-		$items  .= '<a class="nav__vacancies-link" href="' . esc_url( $url ) . '"' . ( $current ? ' aria-current="page"' : '' ) . '>Вакансии</a>';
+		$items  .= '<li class="menu-item nav__vacancies-item"><a href="' . esc_url( $url ) . '"' . ( $current ? ' aria-current="page"' : '' ) . '>Вакансии</a></li>';
 	}
 	return $items;
 }, 20, 2 );
