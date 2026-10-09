@@ -31,7 +31,7 @@ while ( have_posts() ) :
 </nav>
 <section class="hero dark-card hero--services-catalog">
 	<div class="hero-copy">
-		<span class="eyebrow"><?php echo esc_html( $catalog['eyebrow'] ?: 'Услуги Компас-Индор' ); ?></span>
+		<span class="eyebrow"><?php echo esc_html( ( $catalog['eyebrow'] ?? '' ) ?: 'Услуги Компас-Индор' ); ?></span>
 		<h1><?php echo esc_html( $title ); ?></h1>
 		<p><?php echo esc_html( $intro ); ?></p>
 		<div class="actions">
