@@ -1,0 +1,217 @@
+{
+  "key": "group_ki_cases_2026",
+  "title": "Кейсы и отзывы",
+  "fields": [
+    {
+      "key": "field_ki_case_stories",
+      "label": "Истории клиентов",
+      "name": "case_stories",
+      "type": "repeater",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "layout": "block",
+      "pagination": 0,
+      "min": 0,
+      "max": 0,
+      "collapsed": "",
+      "button_label": "Добавить",
+      "rows_per_page": 20,
+      "sub_fields": [
+        {
+          "key": "field_ki_case_story_client",
+          "label": "Клиент",
+          "name": "client",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_story_title",
+          "label": "Заголовок кейса",
+          "name": "title",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_story_text",
+          "label": "Описание / результат",
+          "name": "text",
+          "type": "textarea",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_story_image",
+          "label": "Фотография / логотип",
+          "name": "image",
+          "type": "image",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "return_format": "array",
+          "preview_size": "medium",
+          "library": "all"
+        }
+      ]
+    },
+    {
+      "key": "field_ki_case_reviews",
+      "label": "Отзывы клиентов",
+      "name": "case_reviews",
+      "type": "repeater",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "layout": "block",
+      "pagination": 0,
+      "min": 0,
+      "max": 0,
+      "collapsed": "",
+      "button_label": "Добавить",
+      "rows_per_page": 20,
+      "sub_fields": [
+        {
+          "key": "field_ki_case_review_client",
+          "label": "Компания",
+          "name": "client",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_review_person",
+          "label": "Автор отзыва",
+          "name": "person",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_review_role",
+          "label": "Должность",
+          "name": "role",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_review_quote",
+          "label": "Отзыв",
+          "name": "quote",
+          "type": "textarea",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_case_review_logo",
+          "label": "Логотип клиента",
+          "name": "logo",
+          "type": "image",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "return_format": "array",
+          "preview_size": "medium",
+          "library": "all"
+        }
+      ]
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "page_template",
+        "operator": "==",
+        "value": "page-kejsy.php"
+      }
+    ]
+  ],
+  "menu_order": 0,
+  "position": "normal",
+  "style": "default",
+  "label_placement": "top",
+  "instruction_placement": "label",
+  "hide_on_screen": [],
+  "active": true,
+  "description": "",
+  "show_in_rest": 0,
+  "modified": 1791504000
+}
