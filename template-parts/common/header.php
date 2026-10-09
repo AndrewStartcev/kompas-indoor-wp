@@ -10,9 +10,16 @@ $phone = (string) ( $header['phone'] ?? '' );
 			<small><?php echo esc_html( $header['brand_caption'] ?? '' ); ?></small>
 		</span>
 	</a>
-	<button class="menu-button" type="button" aria-expanded="false" aria-label="Открыть меню"><span></span><span></span><span></span></button>
-	<nav class="nav" aria-label="Основная навигация">
-		<?php wp_nav_menu( array( 'theme_location' => 'main', 'container' => false, 'items_wrap' => '%3$s', 'fallback_cb' => false ) ); ?>
+	<button class="menu-button" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Открыть меню"><span></span><span></span><span></span></button>
+	<nav class="nav" id="main-navigation" aria-label="Основная навигация">
+		<?php wp_nav_menu( array(
+			'theme_location' => 'main',
+			'container'      => false,
+			'menu_class'     => 'nav__list',
+			'items_wrap'     => '<ul id="%1$s" class="%2$s">%3$s</ul>',
+			'depth'          => 2,
+			'fallback_cb'    => false,
+		) ); ?>
 	</nav>
 	<?php if ( $phone ) : ?><a class="header-phone" href="<?php echo esc_url( kompas_phone_href( $phone ) ); ?>"><?php echo esc_html( $phone ); ?></a><?php endif; ?>
 	<button class="button button--small" type="button" data-estimate><?php echo esc_html( kompas_cta_label( $header['button_text'] ?? '' ) ); ?></button>
