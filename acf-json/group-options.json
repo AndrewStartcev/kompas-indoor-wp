@@ -166,7 +166,7 @@
             "class": "",
             "id": ""
           },
-          "default_value": "Рассчитать проект",
+          "default_value": "Оставить заявку",
           "placeholder": "",
           "prepend": "",
           "append": "",
@@ -673,5 +673,5 @@
   "active": true,
   "description": "",
   "show_in_rest": 0,
-  "modified": 1788278400
+  "modified": 1791504000
 }
