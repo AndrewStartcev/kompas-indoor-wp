@@ -28,11 +28,12 @@ function kompas_link( $link, $class = '' ) {
 		return;
 	}
 	printf(
-		'<a class="%1$s" href="%2$s" target="%3$s">%4$s</a>',
+		'<a class="%1$s" href="%2$s" target="%3$s"%5$s>%4$s</a>',
 		esc_attr( $class ),
 		esc_url( $link['url'] ),
-		esc_attr( $link['target'] ?: '_self' ),
-		esc_html( $link['title'] )
+		esc_attr( ( $link['target'] ?? '' ) ?: '_self' ),
+		esc_html( $link['title'] ),
+		'_blank' === ( $link['target'] ?? '' ) ? ' rel="noopener noreferrer"' : ''
 	);
 }
 
@@ -40,4 +41,22 @@ function kompas_link( $link, $class = '' ) {
 function kompas_cta_label( $label = '' ) {
 	$label = trim( wp_strip_all_tags( (string) $label ) );
 	return '' === $label || 'Рассчитать проект' === $label ? 'Оставить заявку' : $label;
+}
+
+
+/**
+ * ACF WYSIWYG titles may be wrapped in paragraphs by wpautop(). Block-level
+ * <p> inside <h1>-<h6> is invalid HTML and can create unexpected margins.
+ * Keep safe inline emphasis and intentional <br> line breaks only.
+ */
+function kompas_heading( $html ) {
+	$html = trim( (string) $html );
+	$html = preg_replace( '~</p>\\s*<p(?:\\s[^>]*)?>~i', '<br>', $html );
+	$html = preg_replace( '~</?p(?:\\s[^>]*)?>~i', '', $html );
+	return wp_kses( $html, array(
+		'br'     => array(),
+		'strong' => array(),
+		'em'     => array(),
+		'span'   => array( 'class' => true ),
+	) );
 }
