@@ -3,7 +3,7 @@ get_header();
 $hero = kompas_group( 'glavnyj_ekran' );
 $service_slug = get_post_field( 'post_name', get_queried_object_id() );
 ?>
-<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="<?php echo esc_url( home_url( '/' ) ); ?>">Главная</a><span>→</span><span><?php the_title(); ?></span></nav>
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="<?php echo esc_url( home_url( '/' ) ); ?>">Главная</a><span aria-hidden="true">→</span><a href="<?php echo esc_url( home_url( '/uslugi/' ) ); ?>">Услуги</a><span aria-hidden="true">→</span><span aria-current="page"><?php the_title(); ?></span></nav>
 <?php if ( $hero ) : ?><section class="hero dark-card hero--service"><div class="hero-copy"><span class="eyebrow"><?php echo esc_html( $hero['eyebrow'] ?: get_the_title() ); ?></span><h1><?php echo wp_kses_post( $hero['title'] ?: get_the_title() ); ?></h1><p><?php echo esc_html( $hero['text'] ?? '' ); ?></p><div class="actions"><button class="button" type="button" data-estimate><?php echo esc_html( kompas_cta_label( $hero['button_text'] ?? '' ) ); ?></button><?php if ( '#process' !== ( $hero['second_button']['url'] ?? '' ) ) { kompas_link( $hero['second_button'] ?? array(), 'button button--light' ); } ?></div><div class="stats"><?php foreach ( (array) ( $hero['stats'] ?? array() ) as $item ) : ?><div><b><?php echo esc_html( $item['value'] ?? '' ); ?></b><span><?php echo esc_html( $item['caption'] ?? '' ); ?></span></div><?php endforeach; ?></div></div><?php kompas_image( $hero['image'] ?? null, 'full' ); ?></section><?php endif; ?>
 
 <?php $steps = kompas_group( 'etapy' ); ?>
