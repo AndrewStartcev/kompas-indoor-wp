@@ -689,6 +689,62 @@
           "max_height": "",
           "max_size": "",
           "mime_types": ""
+        },
+        {
+          "key": "field_ki_home_report_examples",
+          "label": "Примеры фотоотчётов",
+          "name": "examples",
+          "type": "repeater",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "layout": "block",
+          "pagination": 0,
+          "min": 0,
+          "max": 0,
+          "collapsed": "",
+          "button_label": "Добавить",
+          "rows_per_page": 20,
+          "sub_fields": [
+            {
+              "key": "field_ki_home_report_title",
+              "label": "Направление (расклейка, распространение, дорхенгеры)",
+              "name": "title",
+              "type": "text",
+              "instructions": "",
+              "required": 0,
+              "conditional_logic": 0,
+              "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+              },
+              "default_value": "",
+              "placeholder": ""
+            },
+            {
+              "key": "field_ki_home_report_image",
+              "label": "Фото реального отчёта",
+              "name": "image",
+              "type": "image",
+              "instructions": "",
+              "required": 0,
+              "conditional_logic": 0,
+              "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+              },
+              "return_format": "array",
+              "preview_size": "medium",
+              "library": "all"
+            }
+          ]
         }
       ]
     },
@@ -917,6 +973,58 @@
           "placeholder": "",
           "prepend": "",
           "append": "",
+          "maxlength": ""
+        },
+        {
+          "key": "field_ki_home_manager_name",
+          "label": "Имя менеджера для диалога",
+          "name": "manager_name",
+          "type": "text",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "placeholder": ""
+        },
+        {
+          "key": "field_ki_home_manager_avatar",
+          "label": "Фото менеджера (Татьяна Вовк)",
+          "name": "manager_avatar",
+          "type": "image",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "return_format": "array",
+          "preview_size": "medium",
+          "library": "all"
+        },
+        {
+          "key": "field_ki_home_manager_message",
+          "label": "Текст сообщения от менеджера",
+          "name": "manager_message",
+          "type": "textarea",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "default_value": "",
+          "rows": 4,
+          "new_lines": "",
+          "placeholder": "",
           "maxlength": ""
         }
       ]
