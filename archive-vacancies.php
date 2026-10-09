@@ -1,6 +1,14 @@
 <?php
 get_header();
 $vacancy_count = (int) wp_count_posts( 'vacancies' )->publish;
+$archive_headline = function_exists( 'get_field' ) ? get_field( 'vacancy_archive_headline', 'option' ) : '';
+$archive_intro = function_exists( 'get_field' ) ? get_field( 'vacancy_archive_intro', 'option' ) : '';
+$list_title = function_exists( 'get_field' ) ? get_field( 'vacancy_archive_list_title', 'option' ) : '';
+$list_intro = function_exists( 'get_field' ) ? get_field( 'vacancy_archive_list_intro', 'option' ) : '';
+$archive_headline = $archive_headline ?: 'Работа, в которой виден результат';
+$archive_intro = $archive_intro ?: 'Мы организуем офлайн-рекламу в Иркутске и по всей России. За каждым проектом стоят люди: координаторы, операторы и исполнители. Присоединяйтесь к нашей команде.';
+$list_title = $list_title ?: 'Открытые вакансии';
+$list_intro = $list_intro ?: 'Выберите направление и посмотрите подробности: задачи, требования, график и условия. На странице каждой вакансии можно оставить отклик.';
 ?>
 <nav class="breadcrumbs" aria-label="Хлебные крошки">
 	<a href="<?php echo esc_url( home_url( '/' ) ); ?>">Главная</a><span>→</span><span>Вакансии</span>
@@ -8,8 +16,8 @@ $vacancy_count = (int) wp_count_posts( 'vacancies' )->publish;
 <section class="hero dark-card hero--vacancies">
 	<div class="hero-copy">
 		<span class="eyebrow">Карьера в Компас Indoor</span>
-		<h1>Работа, в которой<br>виден результат</h1>
-		<p>Мы организуем офлайн-рекламу в Иркутске и по всей России. За каждым проектом стоят люди: координаторы, операторы и исполнители. Присоединяйтесь к нашей команде.</p>
+		<h1><?php echo esc_html( $archive_headline ); ?></h1>
+		<p><?php echo esc_html( $archive_intro ); ?></p>
 		<div class="actions"><a class="button button--light" href="#open-vacancies">Смотреть вакансии ↗</a></div>
 		<div class="vacancy-hero__facts"><span>Иркутск и проекты по России</span><span>Обучение и поддержка команды</span></div>
 	</div>
@@ -18,8 +26,8 @@ $vacancy_count = (int) wp_count_posts( 'vacancies' )->publish;
 <section class="light-card vacancy-catalog" id="open-vacancies">
 	<div class="section-heading">
 		<span class="eyebrow">Возможности</span>
-		<h2>Открытые вакансии</h2>
-		<p>Выберите направление и посмотрите подробности: задачи, требования, график и условия. На странице каждой вакансии можно оставить отклик.</p>
+		<h2><?php echo esc_html( $list_title ); ?></h2>
+		<p><?php echo esc_html( $list_intro ); ?></p>
 	</div>
 	<?php if ( have_posts() ) : ?>
 	<div class="vacancy-list">
