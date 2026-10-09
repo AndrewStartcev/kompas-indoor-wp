@@ -318,7 +318,12 @@ img {
 .content-page__body table{display:block;overflow-x:auto;border-collapse:collapse;max-width:100%}
 .content-page__body td,.content-page__body th{padding:12px;border:1px solid #dae7f0}
 
-@media(max-width:1120px){
+@media(min-width:1361px){
+  .header{grid-template-columns:minmax(175px,220px) minmax(0,1fr) auto auto;gap:18px}
+  .header .button--small{padding-inline:17px}
+  .header .nav__list{gap:clamp(10px,1.18vw,19px)}
+}
+@media(max-width:1360px){
   .header{grid-template-columns:minmax(0,1fr) auto;gap:12px}
   .header>.button,.header-phone{display:none}
   .header .menu-button{display:block}
