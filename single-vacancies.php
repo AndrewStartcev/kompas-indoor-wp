@@ -16,7 +16,7 @@ $status       = isset( $_GET['application'] ) ? sanitize_key( wp_unslash( $_GET[
 <nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="<?php echo esc_url( home_url( '/' ) ); ?>">Главная</a><span>→</span><a href="<?php echo esc_url( get_post_type_archive_link( 'vacancies' ) ); ?>">Вакансии</a><span>→</span><span><?php the_title(); ?></span></nav>
 <section class="hero dark-card vacancy-detail-hero">
 	<div class="hero-copy">
-		<span class="eyebrow"><?php echo esc_html( $employment ?: 'Карьера в Компас Indoor' ); ?></span>
+		<span class="eyebrow"><?php echo esc_html( $employment ?: 'Карьера в Компас-Индор' ); ?></span>
 		<h1><?php the_title(); ?></h1>
 		<?php if ( $intro ) : ?><p><?php echo esc_html( $intro ); ?></p><?php endif; ?>
 		<div class="vacancy-tags vacancy-tags--on-dark">
