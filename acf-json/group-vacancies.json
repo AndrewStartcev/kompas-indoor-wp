@@ -1,0 +1,197 @@
+{
+  "key": "group_ki_vacancies_careers",
+  "title": "Вакансия — информация",
+  "fields": [
+    {
+      "key": "field_ki_vacancy_salary",
+      "label": "Зарплата / оплата",
+      "name": "vacancy_salary",
+      "type": "text",
+      "instructions": "Например: 55 000–80 000 ₽/мес. или 1 000–1 500 ₽/смена",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_city",
+      "label": "Город и адрес",
+      "name": "vacancy_city",
+      "type": "text",
+      "instructions": "Указывается в карточке и на странице вакансии.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_schedule",
+      "label": "График работы",
+      "name": "vacancy_schedule",
+      "type": "text",
+      "instructions": "Например: 5/2, 12:00–20:30",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_employment",
+      "label": "Тип занятости",
+      "name": "vacancy_employment",
+      "type": "text",
+      "instructions": "Например: полная занятость / подработка.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_experience",
+      "label": "Требуемый опыт",
+      "name": "vacancy_experience",
+      "type": "text",
+      "instructions": "Например: можно без опыта.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_intro",
+      "label": "Короткое описание",
+      "name": "vacancy_intro",
+      "type": "textarea",
+      "instructions": "Краткое описание вакансии для каталога и первого экрана.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "rows": 4,
+      "new_lines": "",
+      "placeholder": "",
+      "maxlength": ""
+    },
+    {
+      "key": "field_ki_vacancy_tasks",
+      "label": "Чем предстоит заниматься",
+      "name": "vacancy_tasks",
+      "type": "wysiwyg",
+      "instructions": "Список обязанностей. Используй маркированный список.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "tabs": "all",
+      "toolbar": "basic",
+      "media_upload": 0,
+      "delay": 0
+    },
+    {
+      "key": "field_ki_vacancy_requirements",
+      "label": "Что нам важно",
+      "name": "vacancy_requirements",
+      "type": "wysiwyg",
+      "instructions": "Требования к кандидату.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "tabs": "all",
+      "toolbar": "basic",
+      "media_upload": 0,
+      "delay": 0
+    },
+    {
+      "key": "field_ki_vacancy_conditions",
+      "label": "Что предлагаем",
+      "name": "vacancy_conditions",
+      "type": "wysiwyg",
+      "instructions": "Условия, преимущества, обучение, зарплата и т. д.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "tabs": "all",
+      "toolbar": "basic",
+      "media_upload": 0,
+      "delay": 0
+    },
+    {
+      "key": "field_ki_vacancy_source_url",
+      "label": "Источник вакансии (только для редактора)",
+      "name": "vacancy_source_url",
+      "type": "url",
+      "instructions": "Публичная ссылка на оригинальное объявление; на сайте не показывается.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "",
+      "placeholder": ""
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "post_type",
+        "operator": "==",
+        "value": "vacancies"
+      }
+    ]
+  ],
+  "menu_order": 0,
+  "position": "normal",
+  "style": "default",
+  "label_placement": "top",
+  "instruction_placement": "label",
+  "hide_on_screen": [],
+  "active": true,
+  "description": "",
+  "show_in_rest": 0,
+  "modified": 1791504000
+}
