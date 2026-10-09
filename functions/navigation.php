@@ -66,7 +66,19 @@ add_filter( 'wp_nav_menu_objects', function ( $items, $args ) {
 			$parent->classes[] = 'current-menu-ancestor';
 			$parent->current_item_ancestor = true;
 		}
-		$items[] = $parent;
+		// Place "Услуги" before "Контакты", rather than after the final item.
+		$insert_at = count( $items );
+		foreach ( $items as $index => $item ) {
+			if ( (int) ( $item->menu_item_parent ?? 0 ) !== 0 ) {
+				continue;
+			}
+			$label = trim( wp_strip_all_tags( $item->title ?? '' ) );
+			if ( 'Контакты' === $label ) {
+				$insert_at = $index;
+				break;
+			}
+		}
+		array_splice( $items, $insert_at, 0, array( $parent ) );
 	}
 
 	$services = get_posts( array(
