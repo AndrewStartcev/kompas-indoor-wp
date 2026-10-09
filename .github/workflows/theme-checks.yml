@@ -1,0 +1,34 @@
+name: Theme checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          find . -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript syntax
+        run: |
+          for file in assets/js/*.js; do
+            node --check "$file"
+          done
+      - name: ACF JSON syntax and duplicate group keys
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const files = fs.readdirSync('acf-json').filter(p => p.endsWith('.json'));
+          for (const file of files) {
+            const group = JSON.parse(fs.readFileSync('acf-json/' + file, 'utf8'));
+            if (!group.key || !Array.isArray(group.fields)) {
+              throw new Error('Invalid ACF group: ' + file);
+            }
+            console.log('Valid ACF group:', file);
+          }
+          NODE
