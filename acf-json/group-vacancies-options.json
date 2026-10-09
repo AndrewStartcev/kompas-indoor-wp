@@ -3,6 +3,76 @@
   "title": "Вакансии — настройки",
   "fields": [
     {
+      "key": "field_ki_vacancy_archive_headline",
+      "label": "Главный заголовок каталога",
+      "name": "vacancy_archive_headline",
+      "type": "text",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Работа, в которой виден результат",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_archive_intro",
+      "label": "Описание первого экрана",
+      "name": "vacancy_archive_intro",
+      "type": "textarea",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Мы организуем офлайн-рекламу в Иркутске и по всей России. За каждым проектом стоят люди: координаторы, операторы и исполнители. Присоединяйтесь к нашей команде.",
+      "placeholder": "",
+      "rows": 4,
+      "new_lines": "",
+      "maxlength": ""
+    },
+    {
+      "key": "field_ki_vacancy_archive_list_title",
+      "label": "Заголовок списка",
+      "name": "vacancy_archive_list_title",
+      "type": "text",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Открытые вакансии",
+      "placeholder": ""
+    },
+    {
+      "key": "field_ki_vacancy_archive_list_intro",
+      "label": "Подзаголовок списка",
+      "name": "vacancy_archive_list_intro",
+      "type": "textarea",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Выберите направление и посмотрите подробности: задачи, требования, график и условия. На странице каждой вакансии можно оставить отклик.",
+      "placeholder": "",
+      "rows": 4,
+      "new_lines": "",
+      "maxlength": ""
+    },
+    {
       "key": "field_ki_vacancy_recipient_email",
       "label": "Почта для откликов",
       "name": "vacancy_recipient_email",
