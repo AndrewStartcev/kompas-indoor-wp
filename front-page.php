@@ -20,6 +20,7 @@
 		<a class="service-card light-card" href="<?php echo esc_url( $item['link']['url'] ?? '#' ); ?>"><div class="service-card__top"><span class="service-card__meta"><?php kompas_image( $item['image'] ?? null, 'full', array( 'alt' => '' ) ); ?><span><?php echo esc_html( $item['number'] ?? '' ); ?></span></span><span class="arrow">↗</span></div><h3><?php echo kompas_heading( $item['title'] ?? '' ); ?></h3><p><?php echo esc_html( $item['text'] ?? '' ); ?></p></a>
 	<?php endforeach; ?>
 	</div>
+	<div class="services-home__all"><a href="<?php echo esc_url( home_url( '/uslugi/' ) ); ?>">Все услуги <span aria-hidden="true">→</span></a></div>
 </section>
 <?php endif; ?>
 
@@ -31,8 +32,9 @@
 <?php $gallery = kompas_group( 'fototchet' ); ?>
 <?php if ( $gallery ) : ?>
 <section class="dark-card gallery" id="cases"><div class="section-heading"><span class="eyebrow"><?php echo esc_html( $gallery['eyebrow'] ?? '' ); ?></span><h2><?php echo kompas_heading( $gallery['title'] ?? '' ); ?></h2><p><?php echo esc_html( $gallery['text'] ?? '' ); ?></p></div><div class="gallery-grid gallery-grid--reports">
-<?php if ( ! empty( $gallery['examples'] ) ) : ?>
-	<?php foreach ( (array) $gallery['examples'] as $example ) : if ( empty( $example['image'] ) ) { continue; } ?><figure class="gallery-report"><?php kompas_image( $example['image'], 'large', array( 'loading' => 'lazy' ) ); ?><figcaption><?php echo esc_html( $example['title'] ?? '' ); ?></figcaption></figure><?php endforeach; ?>
+<?php $report_examples = array_filter( (array) ( $gallery['examples'] ?? array() ), static function ( $example ) { return ! empty( $example['image'] ); } ); ?>
+<?php if ( $report_examples ) : ?>
+	<?php foreach ( $report_examples as $example ) : ?><figure class="gallery-report"><?php kompas_image( $example['image'], 'large', array( 'loading' => 'lazy' ) ); ?><figcaption><?php echo esc_html( $example['title'] ?? '' ); ?></figcaption></figure><?php endforeach; ?>
 <?php else : foreach ( (array) ( $gallery['images'] ?? array() ) as $image ) : ?><figure class="gallery-report"><?php kompas_image( $image, 'large', array( 'loading' => 'lazy' ) ); ?></figure><?php endforeach; endif; ?>
 </div></section>
 <?php endif; ?>
