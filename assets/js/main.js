@@ -13,7 +13,7 @@ const reveal=document.querySelectorAll('main > section,main > .breadcrumbs,.foot
   const mobileButton = document.querySelector('.header .menu-button');
   if (!navigation) return;
 
-  const mobileQuery = window.matchMedia('(max-width: 1120px)');
+  const mobileQuery = window.matchMedia('(max-width: 1360px)');
   const submenuControls = [];
 
   navigation.querySelectorAll('.menu-item-has-children').forEach((item, index) => {
