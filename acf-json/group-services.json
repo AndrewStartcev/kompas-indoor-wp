@@ -994,6 +994,62 @@
           "max_height": "",
           "max_size": "",
           "mime_types": ""
+        },
+        {
+          "key": "field_ki_service_report_examples",
+          "label": "Примеры фотоотчётов",
+          "name": "examples",
+          "type": "repeater",
+          "instructions": "",
+          "required": 0,
+          "conditional_logic": 0,
+          "wrapper": {
+            "width": "",
+            "class": "",
+            "id": ""
+          },
+          "layout": "block",
+          "pagination": 0,
+          "min": 0,
+          "max": 0,
+          "collapsed": "",
+          "button_label": "Добавить",
+          "rows_per_page": 20,
+          "sub_fields": [
+            {
+              "key": "field_ki_service_report_title",
+              "label": "Название примера",
+              "name": "title",
+              "type": "text",
+              "instructions": "",
+              "required": 0,
+              "conditional_logic": 0,
+              "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+              },
+              "default_value": "",
+              "placeholder": ""
+            },
+            {
+              "key": "field_ki_service_report_image",
+              "label": "Фотоотчёт",
+              "name": "image",
+              "type": "image",
+              "instructions": "",
+              "required": 0,
+              "conditional_logic": 0,
+              "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+              },
+              "return_format": "array",
+              "preview_size": "medium",
+              "library": "all"
+            }
+          ]
         }
       ]
     },
