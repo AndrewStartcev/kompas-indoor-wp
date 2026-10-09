@@ -35,3 +35,9 @@ function kompas_link( $link, $class = '' ) {
 		esc_html( $link['title'] )
 	);
 }
+
+/** Keep legacy ACF buttons compatible with the customer's updated CTA. */
+function kompas_cta_label( $label = '' ) {
+	$label = trim( wp_strip_all_tags( (string) $label ) );
+	return '' === $label || 'Рассчитать проект' === $label ? 'Оставить заявку' : $label;
+}
