@@ -15,7 +15,7 @@ $list_intro = $list_intro ?: 'Выберите направление и пос�
 </nav>
 <section class="hero dark-card hero--vacancies">
 	<div class="hero-copy">
-		<span class="eyebrow">Карьера в Компас Indoor</span>
+		<span class="eyebrow">Карьера в Компас-Индор</span>
 		<h1><?php echo esc_html( $archive_headline ); ?></h1>
 		<p><?php echo esc_html( $archive_intro ); ?></p>
 		<div class="actions"><a class="button button--light" href="#open-vacancies">Смотреть вакансии ↗</a></div>
@@ -58,7 +58,7 @@ $list_intro = $list_intro ?: 'Выберите направление и пос�
 	<?php endif; ?>
 </section>
 <section class="cta vacancy-cta">
-	<div><span class="eyebrow">Компас Indoor</span><h2>Давайте делать большие проекты вместе</h2><p>Работать с рекламными проектами можно научиться. Главное — внимательность, ответственность и желание развиваться.</p></div>
+	<div><span class="eyebrow">Компас-Индор</span><h2>Давайте делать большие проекты вместе</h2><p>Работать с рекламными проектами можно научиться. Главное — внимательность, ответственность и желание развиваться.</p></div>
 	<a class="button button--light" href="<?php echo esc_url( home_url( '/o-kompanii/' ) ); ?>">О компании ↗</a>
 </section>
 <?php get_footer(); ?>
