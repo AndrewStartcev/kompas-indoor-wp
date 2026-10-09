@@ -5,7 +5,7 @@
 	<div class="hero-copy">
 		<h1><?php echo wp_kses_post( $hero['title'] ?? '' ); ?></h1>
 		<p><?php echo wp_kses_post( $hero['text'] ?? '' ); ?></p>
-		<div class="actions"><button class="button" type="button" data-estimate><?php echo esc_html( $hero['button_text'] ?? '' ); ?></button><?php kompas_link( $hero['second_button'] ?? array(), 'button button--light' ); ?></div>
+		<div class="actions"><button class="button" type="button" data-estimate><?php echo esc_html( kompas_cta_label( $hero['button_text'] ?? '' ) ); ?></button><?php kompas_link( $hero['second_button'] ?? array(), 'button button--light' ); ?></div>
 		<div class="stats"><?php foreach ( (array) ( $hero['stats'] ?? array() ) as $item ) : ?><div><b><?php echo esc_html( $item['value'] ?? '' ); ?></b><span><?php echo esc_html( $item['caption'] ?? '' ); ?></span></div><?php endforeach; ?></div>
 	</div>
 	<?php kompas_image( $hero['image'] ?? null, 'full' ); ?>
