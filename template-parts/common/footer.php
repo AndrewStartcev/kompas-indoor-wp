@@ -8,9 +8,9 @@ $email = (string) ( $header['email'] ?? '' );
 	<div class="footer-brand">
 		<a class="brand" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 			<?php kompas_image( $header['logo_mark'] ?? null, 'full', array( 'class' => 'brand__mark', 'alt' => '' ) ); ?>
-			<span class="brand__text"><strong><?php echo wp_kses_post( $header['brand_name'] ?? '' ); ?></strong><small><?php echo esc_html( $header['brand_caption'] ?? '' ); ?></small></span>
+			<span class="brand__text"><strong><?php echo kompas_heading( $header['brand_name'] ?? '' ); ?></strong><small><?php echo esc_html( $header['brand_caption'] ?? '' ); ?></small></span>
 		</a>
-		<strong class="footer-tagline"><?php echo wp_kses_post( $footer['tagline'] ?? '' ); ?></strong>
+		<strong class="footer-tagline"><?php echo kompas_heading( $footer['tagline'] ?? '' ); ?></strong>
 	</div>
 	<?php foreach ( (array) ( $footer['columns'] ?? array() ) as $column ) : ?>
 		<div><span class="eyebrow"><?php echo esc_html( $column['title'] ?? '' ); ?></span>
