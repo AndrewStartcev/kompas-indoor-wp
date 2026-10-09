@@ -6,7 +6,7 @@ $phone = (string) ( $header['phone'] ?? '' );
 	<a class="brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?> — главная">
 		<?php kompas_image( $header['logo_mark'] ?? null, 'full', array( 'class' => 'brand__mark', 'alt' => '' ) ); ?>
 		<span class="brand__text">
-			<strong><?php echo wp_kses_post( $header['brand_name'] ?? '' ); ?></strong>
+			<strong><?php echo kompas_heading( $header['brand_name'] ?? '' ); ?></strong>
 			<small><?php echo esc_html( $header['brand_caption'] ?? '' ); ?></small>
 		</span>
 	</a>
